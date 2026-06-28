@@ -53,8 +53,8 @@ export const api = {
   metrics: () => get<Metric[]>('/api/metrics'),
   genres: () => get<string[]>('/api/genres'),
   profiles: () => get<Profile[]>('/api/profiles'),
-  home: (userId: number, explore: number, genre: string) =>
-    get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}`),
+  home: (userId: number, explore: number, genre: string, anchor = 0) =>
+    get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}&anchor=${anchor}`),
   chat: (userId: number, messages: ChatTurn[]) =>
     fetch(`${BASE}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

@@ -255,9 +255,10 @@ def genres():
 
 
 @app.get("/api/home")
-def home(user_id: int, explore: float = 0.4, genre: str = ""):
+def home(user_id: int, explore: float = 0.4, genre: str = "", anchor: int = 0):
     """One call powers the multi-rail homepage: the story-arc + several rails,
-    shaped by the discovery slider (explore) and an optional genre filter."""
+    shaped by the discovery slider (explore), an optional genre filter, and an
+    optional `anchor` movie that re-seeds the 'Because you liked' rail."""
     models = STATE["models"]
     g = genre.strip() or None
     rr = models.get("ltr_reranked")
@@ -269,7 +270,7 @@ def home(user_id: int, explore: float = 0.4, genre: str = ""):
     rails.append({"title": "Top picks for you", "subtitle": "Learning-to-Rank hybrid + re-ranking",
                   "items": _enrich_list(top, None if rr else g)})
 
-    seed = _user_seed(user_id)
+    seed = STATE["item_meta"].get(anchor) if anchor else _user_seed(user_id)
     if seed and "content_based" in models:
         sim = models["content_based"].similar_items(seed["movie_id"], n=14)
         rails.append({"title": f"Because you liked {seed['title']}", "subtitle": "Content similarity",

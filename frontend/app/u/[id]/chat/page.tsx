@@ -25,8 +25,16 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
+  const sentInitial = useRef(false)
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [turns, loading])
+
+  // auto-send a query passed from the home "describe your mood" bar (?q=...)
+  useEffect(() => {
+    if (sentInitial.current) return
+    const q = new URLSearchParams(window.location.search).get('q')
+    if (q) { sentInitial.current = true; send(q) }
+  }, [])
 
   async function send(text: string) {
     if (!text.trim() || loading) return
