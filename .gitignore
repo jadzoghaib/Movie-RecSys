@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+.vite/
+
+# Secrets / env  (TMDB key etc. — never commit)
+.env
+.env.*
+*.local
+
+# Course materials (third-party, not redistributed)
+IndividualProject.pdf
+recommender_assignment_placeholders.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
