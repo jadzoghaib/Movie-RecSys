@@ -13,6 +13,7 @@ from src import config
 from src.data_loading import (
     load_ratings, load_items, load_links, train_test_split_ratings,
 )
+from src.tmdb import load_cache
 from api.registry import build_models
 
 STATE = {}
@@ -35,14 +36,19 @@ def build_state():
         items = items.merge(links[[config.ITEM_COL, "tmdbId", "imdbId"]],
                             on=config.ITEM_COL, how="left")
 
+    tmdb_cache = load_cache()
     item_meta = {}
     for row in items.itertuples(index=False):
         tmdb = getattr(row, "tmdbId", None)
         genres = row.genres.split("|") if isinstance(row.genres, str) else []
+        cd = tmdb_cache.get(str(int(row.movieId)))
+        usable = cd if (cd and "error" not in cd) else {}
         item_meta[int(row.movieId)] = {
             "movie_id": int(row.movieId),
             "title": row.title,
             "genres": [g for g in genres if g and g != "(no genres listed)"],
+            "poster_url": usable.get("poster_url"),
+            "overview": usable.get("overview", ""),
             "tmdb_url": (f"https://www.themoviedb.org/movie/{int(tmdb)}"
                         if pd.notna(tmdb) else None),
         }

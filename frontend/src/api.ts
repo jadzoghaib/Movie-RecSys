@@ -6,6 +6,8 @@ export interface Movie {
   title: string
   genres: string[]
   tmdb_url: string | null
+  poster_url?: string | null
+  overview?: string
   score?: number
 }
 

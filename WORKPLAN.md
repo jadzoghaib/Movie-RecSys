@@ -94,6 +94,7 @@ Prioritised, with target sprint. Items tagged **[blueprint]** / **[research]** c
 | E6-2 | Deck | slide deck telling the comparison + scoping story | MUST | 6 |
 | E6-3 | Hybrid | weighted/stacked hybrid blend (CF+content+popularity) `[blueprint]` | SHOULD | 6 |
 | E6-4 | Re-ranking | MMR diversity re-ranking `[blueprint]` | SHOULD | 6 |
+| E6-5 | Composition | **router / segmented meta-recommender** — route users to different recommenders by *behavioural* segment (cold/light→popularity/content, warm→CF/MF; no demographics in data) `[research]` | SHOULD | 6/7 |
 | **E7-1** | **WOW ★** | **"Tonight's Arc" serendipitous story-arc rail** (sequenced trust→discovery journey) `[research]` | SHOULD | 7 |
 | E7-2 | UX | multi-rail homepage (Because-you-liked-X / Discover / Popular / genre) `[blueprint]` | SHOULD | 7 |
 | E7-3 | UX | structured negotiation panel (novelty slider + genre/language/year filters) `[research]` | SHOULD | 7 |

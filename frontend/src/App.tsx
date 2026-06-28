@@ -120,13 +120,13 @@ export default function App() {
           </h2>
 
           {loading ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
               {Array.from({ length: n }).map((_, i) => (
-                <div key={i} className="h-36 animate-pulse rounded-xl bg-white/5" />
+                <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-white/5" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
               {items.map((m, i) => (
                 <MovieCard key={m.movie_id} movie={m} rank={i + 1} />
               ))}
@@ -158,27 +158,42 @@ function MovieCard({ movie, rank }: { movie: Movie; rank: number }) {
       href={movie.tmdb_url ?? '#'}
       target="_blank"
       rel="noreferrer"
-      className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-zinc-800/60 to-zinc-900 p-4 transition hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-500/10"
+      title={movie.overview || movie.title}
+      className="group relative overflow-hidden rounded-xl border border-white/10 bg-zinc-900 transition hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-500/20"
     >
-      <div className="mb-3 flex items-start justify-between">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-semibold text-indigo-300">
+      <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-800">
+        {movie.poster_url ? (
+          <img
+            src={movie.poster_url}
+            alt={movie.title}
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900 p-3 text-center text-xs text-zinc-300">
+            {movie.title}
+          </div>
+        )}
+        <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs font-semibold text-indigo-300 backdrop-blur">
           {rank}
         </span>
         {movie.score != null && (
-          <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+          <span className="absolute right-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-zinc-200 backdrop-blur">
             {movie.score}
           </span>
         )}
       </div>
-      <h3 className="text-sm font-medium leading-snug text-zinc-100 group-hover:text-white">
-        {movie.title}
-      </h3>
-      <div className="mt-3 flex flex-wrap gap-1">
-        {movie.genres.slice(0, 3).map((g) => (
-          <span key={g} className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400">
-            {g}
-          </span>
-        ))}
+      <div className="p-2.5">
+        <h3 className="line-clamp-2 text-xs font-medium leading-snug text-zinc-100 group-hover:text-white">
+          {movie.title}
+        </h3>
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {movie.genres.slice(0, 2).map((g) => (
+            <span key={g} className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] text-zinc-400">
+              {g}
+            </span>
+          ))}
+        </div>
       </div>
     </a>
   )

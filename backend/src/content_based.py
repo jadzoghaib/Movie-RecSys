@@ -20,6 +20,7 @@ from sklearn.preprocessing import normalize
 from .base import Recommender
 from .config import USER_COL, ITEM_COL, RATING_COL, GENRES_COL
 from .data_loading import load_tags
+from .tmdb import load_cache
 
 
 def _genre_tokens(genres):
@@ -32,13 +33,24 @@ def _genre_tokens(genres):
     return " ".join(out)
 
 
+def _tmdb_text(cache, movie_id):
+    """overview + keywords + cast for one movie (empty if not cached)."""
+    d = cache.get(str(int(movie_id)))
+    if not d or "error" in d:
+        return ""
+    kw = " ".join(d.get("keywords", []))
+    cast = " ".join(d.get("cast", []))
+    return f"{d.get('overview', '')} {kw} {cast}"
+
+
 class ContentBasedRecommender(Recommender):
     name = "content_based"
     label = "Content-Based"
     description = "Recommends movies similar in genre & tags to the ones you rated highly (TF-IDF + cosine)."
 
-    def __init__(self, use_tags=True):
+    def __init__(self, use_tags=True, use_tmdb=True):
         self.use_tags = use_tags
+        self.use_tmdb = use_tmdb
 
     def fit(self, train_df, items_df=None):
         if items_df is None:
@@ -61,7 +73,16 @@ class ContentBasedRecommender(Recommender):
         genre_docs = items[GENRES_COL].apply(_genre_tokens).to_numpy()
         docs = genre_docs + " " + items["tagtext"].fillna("").to_numpy()
 
-        self.vectorizer_ = TfidfVectorizer(lowercase=True, min_df=1)
+        if self.use_tmdb:
+            cache = load_cache()
+            if cache:
+                docs = docs + " " + np.array([_tmdb_text(cache, m) for m in items[ITEM_COL]])
+
+        # overview adds lots of prose -> drop English stopwords + hapax tokens
+        self.vectorizer_ = TfidfVectorizer(
+            lowercase=True, stop_words="english",
+            min_df=2, sublinear_tf=True, max_features=20000,
+        )
         self.item_features_ = self.vectorizer_.fit_transform(docs)   # n_items × V (L2-normalized)
         self.item_ids_ = items[ITEM_COL].to_numpy()
         self.item_id_to_index_ = {int(m): i for i, m in enumerate(self.item_ids_)}
