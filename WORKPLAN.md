@@ -92,9 +92,11 @@ Prioritised, with target sprint. Items tagged **[blueprint]** / **[research]** c
 | E5-2 | Matrix Factorization | k / latent-factor tuning | SHOULD | 5 |
 | E6-1 | Evaluation | full comparison table + beyond-accuracy (novelty, diversity, **serendipity**, coverage, popularity bias) | MUST | 6 |
 | E6-2 | Deck | slide deck telling the comparison + scoping story | MUST | 6 |
-| E6-3 | Hybrid | weighted/stacked hybrid blend (CF+content+popularity) `[blueprint]` | SHOULD | 6 |
+| E6-3 | Hybrid | **Learning-to-Rank hybrid** — LightGBM LambdaRank over candidate-generator + match features (upgrades the naive blend) `[research]` | SHOULD | 6 |
 | E6-4 | Re-ranking | MMR diversity re-ranking `[blueprint]` | SHOULD | 6 |
 | E6-5 | Composition | **router / segmented meta-recommender** — route users to different recommenders by *behavioural* segment (cold/light→popularity/content, warm→CF/MF; no demographics in data) `[research]` | SHOULD | 6/7 |
+| E6-6 | Hybrid | LTR candidate-generation + feature table (cf/uu/mf/content/pop scores, graded labels, neg-sampling, leakage-safe split) `[research]` | SHOULD | 6 |
+| E6-7 | Differentiator | insider TMDB heuristic features (commercial-scale / prestige / crowdpleaser / watchability / franchise) — test via ranker feature importance `[research]` | COULD | 6 |
 | **E7-1** | **WOW ★** | **"Tonight's Arc" serendipitous story-arc rail** (sequenced trust→discovery journey) `[research]` | SHOULD | 7 |
 | E7-2 | UX | multi-rail homepage (Because-you-liked-X / Discover / Popular / genre) `[blueprint]` | SHOULD | 7 |
 | E7-3 | UX | structured negotiation panel (novelty slider + genre/language/year filters) `[research]` | SHOULD | 7 |
@@ -208,6 +210,29 @@ The user's research describes a production system (implicit feedback at scale + 
 | Microservices, feature store, streaming, RL/bandits, ANN, neural rankers, auth, LLM explanations, group recs | No data / no live loop / over-engineering | 🔴 Drop (keep FastAPI monolith) |
 
 **Deck angle:** explicitly scoping out the production infra *and explaining why* (offline + data constraints) is a strength — it shows deliberate engineering judgement, which the prof (ex-Strands cofounder) rewards over naive over-building.
+
+---
+
+## 3c. Learning-to-Rank hybrid (research-upgraded — the headline hybrid)
+
+Upgrades the naive weighted blend (old E6-3) into a **3-stage pipeline**: candidate generation → learned ranker → re-ranker. The project's biggest technical-depth lever, and fully feasible on our data (LightGBM 4.6 installed).
+
+**Stage 1 — Candidate generation:** union of top-N from each existing recommender (popularity, item-item, user-user, content, MF) per user → ~150–250 candidates; tag each with its source(s).
+
+**Stage 2 — Learned ranker (LightGBM `LGBMRanker`, LambdaRank/NDCG):**
+- One row per (user, candidate) pair; `group` = per-user candidate count.
+- **Graded labels** from train ratings: 5★→3, 4★→2, 3★→1, ≤2★/sampled-negative→0.
+- **Negative sampling:** hard negatives (similar-to-liked, not rated) + random negatives.
+- **Features (~25, focused):** match — cf_score, uu_cf_score, **mf_score** (Sprint 5), content_score, genre_overlap, popularity_pct, novelty; user — rating_count, avg, std, genre_entropy, novelty_tolerance; item — year, avg_rating, popularity, runtime/lang (TMDB); source — source_*, num_sources_hit, best_source_rank.
+- **⚠ Leakage-safe design (key correctness risk — design FIRST):** generators fit on a sub-split; ranker trained on held-out labels; final eval on the untouched test set.
+
+**Stage 3 — Re-ranker:** final_score = α·ranker + β·novelty + γ·freshness + δ·trust, then greedy MMR diversity (E6-4). Driven by the explore/safe slider + genre filters (E7-3).
+
+**Comparison to report:** CF-only · content-only · naive-hybrid · **LTR-hybrid** · LTR+re-rank — a learned ranker over multiple generators is the "serious, defensible hybrid" the rubric rewards.
+
+**Optional differentiator (E6-7):** the user's studio-strategy *insider* TMDB features (commercial-scale, prestige, crowdpleaser, watchability, franchise/IP). Frame as a **hypothesis**: do they earn predictive weight? Report LightGBM feature importance to answer honestly. Needs extended TMDB fields (budget/revenue/runtime/language/vote/collection) → extend the cache.
+
+**LLM stays post-ranking** (E7-5): explanations + NL→filters, never the recommender core — exactly what the research advises.
 
 ---
 

@@ -19,6 +19,7 @@ from src.collaborative_filtering import (
     ItemItemCollaborativeFiltering, UserUserCollaborativeFiltering,
 )
 from src.content_based import ContentBasedRecommender
+from src.matrix_factorization import MatrixFactorizationRecommender
 from src.evaluation import evaluate_model
 
 
@@ -39,6 +40,7 @@ def main():
         ItemItemCollaborativeFiltering(k=40, min_support=5),
         UserUserCollaborativeFiltering(k=40),
         ContentBasedRecommender(use_tags=True),
+        MatrixFactorizationRecommender(n_factors=50),
     ]
 
     rows = []

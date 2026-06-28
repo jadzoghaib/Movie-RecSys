@@ -12,6 +12,7 @@ from src.collaborative_filtering import (
     ItemItemCollaborativeFiltering, UserUserCollaborativeFiltering,
 )
 from src.content_based import ContentBasedRecommender
+from src.matrix_factorization import MatrixFactorizationRecommender
 
 
 def build_models():
@@ -24,5 +25,5 @@ def build_models():
         ItemItemCollaborativeFiltering(k=40, min_support=5),
         UserUserCollaborativeFiltering(k=40),
         ContentBasedRecommender(use_tags=True),
-        # Sprint 5: MatrixFactorizationRecommender
+        MatrixFactorizationRecommender(n_factors=50),
     ]
