@@ -55,6 +55,7 @@ export default function HomePage() {
             Discovery
           </label>
 
+          <Link href={`/u/${userId}/chat`} className="text-xs font-medium text-red-400 transition hover:text-red-300">✨ AI Guide</Link>
           <Link href="/evaluation" className="text-xs text-zinc-400 transition hover:text-white">Evaluation</Link>
         </div>
       </header>

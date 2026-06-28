@@ -42,6 +42,9 @@ export interface Profile {
   fav_poster: string | null
 }
 
+export interface ChatTurn { role: 'user' | 'assistant'; text: string }
+export interface ChatResponse { action: string; reply: string; movies: Movie[]; filters?: Record<string, unknown> }
+
 const get = <T,>(path: string) => fetch(`${BASE}${path}`).then((r) => r.json() as Promise<T>)
 
 export const api = {
@@ -52,4 +55,9 @@ export const api = {
   profiles: () => get<Profile[]>('/api/profiles'),
   home: (userId: number, explore: number, genre: string) =>
     get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}`),
+  chat: (userId: number, messages: ChatTurn[]) =>
+    fetch(`${BASE}/api/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, messages }),
+    }).then((r) => r.json() as Promise<ChatResponse>),
 }

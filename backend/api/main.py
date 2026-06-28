@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from src import config
 from src.data_loading import (
@@ -16,6 +17,7 @@ from src.data_loading import (
 from src.tmdb import load_cache
 from src.reranking import ReRankedRecommender
 from src.explain import movie_chip_map, user_taste, why_recommended
+from src.gemini import parse_intent
 from api.registry import build_models
 
 STATE = {}
@@ -70,6 +72,7 @@ def build_state():
         ratings=ratings, train=train, test=test, models=models,
         item_meta=item_meta, tmdb_cache=tmdb_cache,
         user_counts=ratings[config.USER_COL].value_counts(),
+        item_pop=train[config.ITEM_COL].value_counts().to_dict(),
         profiles=_compute_profiles(train, item_meta),
     )
 
@@ -305,6 +308,95 @@ def home(user_id: int, explore: float = 0.4, genre: str = ""):
         "user_id": user_id,
         "arc": {"caption": _arc_caption(arc_items), "items": arc_items},
         "rails": [r for r in rails if r["items"]],
+    }
+
+
+def _chat_recommend(user_id, intent, n=12):
+    """Run our recommender under the Gemini-parsed filters (the LLM never ranks)."""
+    models, item_meta, cache = STATE["models"], STATE["item_meta"], STATE["tmdb_cache"]
+    item_pop = STATE["item_pop"]
+    rr = models.get("ltr_reranked")
+    genres = set(intent.get("genres") or [])
+    excl = set(intent.get("exclude_genres") or [])
+    kws = {k.lower() for k in (intent.get("keywords") or [])}
+    explore = float(intent.get("explore") or 0.4)
+    era = intent.get("era", "any")
+
+    pool = dict(rr.base.recommend(user_id, n=200)) if rr else {}
+    mn = min(pool.values()) if pool else 0.0
+    rng = (max(pool.values()) - mn) if pool else 1.0
+    rng = rng or 1.0
+    seen = models["most_popular"]._seen.get(user_id, set()) if "most_popular" in models else set()
+
+    cand = set(pool)                        # personalised pool (already vetted) bypasses quality floor
+    if genres or kws:                       # broaden beyond personal pool for thematic asks
+        for mid, meta in item_meta.items():
+            mg = set(meta["genres"])
+            if genres and not (mg & genres):
+                continue
+            c = cache.get(str(mid)) or {}
+            if (c.get("vote_count", 0) or 0) < 40:        # quality floor for thematic adds (no noise)
+                continue
+            if kws and not genres and not ({k.lower() for k in c.get("keywords", [])} & kws):
+                continue
+            cand.add(mid)
+
+    scored = []
+    for mid in cand:
+        if mid in seen:
+            continue
+        meta = item_meta.get(mid)
+        if not meta:
+            continue
+        mg = set(meta["genres"])
+        if excl and (mg & excl):
+            continue
+        c = cache.get(str(mid)) or {}
+        year = c.get("release_year")
+        if era == "recent" and (not year or year < 2010):
+            continue
+        if era == "classic" and (not year or year >= 1995):
+            continue
+        kw = {k.lower() for k in c.get("keywords", [])}
+        va, vc = c.get("vote_average", 0.0) or 0.0, c.get("vote_count", 0) or 0
+        pers = (pool[mid] - mn) / rng if mid in pool else 0.0
+        nov = 1.0 / (1.0 + item_pop.get(mid, 0) ** 0.5)
+        quality = (va / 10.0) if vc >= 50 else 0.0
+        score = (pers + 0.8 * len(kw & kws) + 0.3 * len(mg & genres)
+                 + 0.5 * quality + explore * 1.5 * nov)
+        scored.append((mid, score))
+
+    scored.sort(key=lambda x: -x[1])
+    items = [_enrich(mid, sc) for mid, sc in scored[:n]]
+    taste = user_taste(user_id, STATE["train"], item_meta, cache)
+    for it in items:
+        it["why"] = why_recommended(it, cache.get(str(it["movie_id"])), taste)
+    return items
+
+
+class ChatMessage(BaseModel):
+    role: str
+    text: str
+
+
+class ChatRequest(BaseModel):
+    user_id: int
+    messages: list[ChatMessage]
+
+
+@app.post("/api/chat")
+def chat(req: ChatRequest):
+    """Conversational guide: Gemini parses the request (or asks), we recommend."""
+    intent = parse_intent([{"role": m.role, "text": m.text} for m in req.messages])
+    if not intent:
+        return {"action": "error", "reply": "The AI guide is unavailable right now.", "movies": []}
+    if intent.get("action") == "ask":
+        return {"action": "ask", "reply": intent.get("reply", "What are you in the mood for?"), "movies": []}
+    return {
+        "action": "recommend",
+        "reply": intent.get("reply", "Here are a few picks:"),
+        "movies": _chat_recommend(req.user_id, intent),
+        "filters": {k: intent.get(k) for k in ("genres", "exclude_genres", "keywords", "explore", "era")},
     }
 
 

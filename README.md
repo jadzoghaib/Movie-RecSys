@@ -12,10 +12,32 @@ Next.js (React + TS + Tailwind)  →  FastAPI REST  →  Python recommender core
 
 - **`backend/src/`** — the engine; every algorithm implements one `Recommender` interface (`fit` / `recommend`).
 - **`backend/api/`** — FastAPI exposing every model over REST (`/api/home`, `/api/recommend`, `/api/similar`, `/api/metrics`, …).
-- **`frontend/`** — Next.js UI ("CineMatch"): Netflix-style multi-rail homepage, hero billboard, **Tonight's Arc** story rail, discovery slider, posters.
+- **`frontend/`** — Next.js UI ("CineMatch"): `/` "Who's watching?" landing → `/u/[id]` Netflix-style home (hero, **Tonight's Arc**, rails, "why this" explanations, discovery slider) → `/evaluation` the metrics lab → `/u/[id]/chat` the **conversational AI guide**.
 
 The design is *registry-driven*: add a model in `src/`, register it in `api/registry.py`, and it
 appears automatically in the API, the evaluation harness, and the UI — no other changes needed.
+
+### Project structure — clear separation of concerns
+
+```
+backend/
+├── src/                          # the recommender CORE (models · data · evaluation · features)
+│   ├── base.py                   #   shared Recommender interface (fit / recommend)
+│   ├── data_loading.py           #   load · validate · EDA stats · train/test split
+│   ├── baselines.py · collaborative_filtering.py · content_based.py
+│   ├── matrix_factorization.py · learning_to_rank.py · reranking.py   # the models
+│   ├── evaluation.py             #   OFFLINE EVALUATION (P@K · NDCG · diversity · novelty · …)
+│   ├── insider.py · explain.py   #   feature engineering + grounded explanations
+│   └── tmdb.py · gemini.py       #   external enrichment (metadata) + LLM intent parsing
+├── main.py                       # MODEL TRAINING + EVALUATION pipeline -> results/metrics.csv
+├── api/                          # APP LOGIC — FastAPI serving the core over REST
+└── notebooks/eda.py              # exploratory data analysis -> results/figures/
+frontend/                         # APP LOGIC — Next.js UI (decoupled from the core)
+```
+
+- **Model training** → the model classes in `src/*.py`, orchestrated by `main.py`.
+- **Offline evaluation** → `src/evaluation.py`, run via `main.py`.
+- **App logic** → `api/` (REST) + `frontend/` (UI), fully decoupled from the recommender core.
 
 ## Methods implemented
 
@@ -26,22 +48,40 @@ appears automatically in the API, the evaluation harness, and the UI — no othe
 | Content-based | TF-IDF over genres + tags + **TMDB** (overview/keywords/cast) · `similar_items` |
 | Matrix factorization | Truncated-SVD latent factors |
 | **Hybrid (Learning-to-Rank)** | LightGBM LambdaRank over all generators + insider studio-strategy features · MMR re-ranker (diversity/novelty/trust) |
+| **Conversational (LLM)** | Gemini parses a free-text vibe → structured filters → our recommender ranks → grounded reply |
 
 ## Results so far (P@10, per-user 80/20 split, k=10)
 
 | Model | P@10 | NDCG@10 | Coverage |
 |---|---|---|---|
-| user_user_cf | **0.168** | 0.217 | 0.030 |
-| ltr_hybrid | **0.168** | 0.212 | 0.051 |
-| ltr_reranked | 0.159 | 0.201 | 0.057 |
+| **ltr_hybrid** | **0.172** | **0.219** | 0.051 |
+| user_user_cf | 0.168 | 0.217 | 0.030 |
+| ltr_reranked | 0.164 | 0.209 | 0.059 |
 | item_item_cf | 0.137 | 0.177 | 0.148 |
 | most_popular | 0.128 | 0.158 | 0.006 |
 | bayesian_avg | 0.079 | 0.096 | 0.004 |
 | content_based | 0.043 | 0.065 | 0.179 |
 | random | 0.001 | 0.002 | 0.490 |
 
-The spread illustrates the project's thesis — **accuracy is not everything**: the most accurate model
-(user-user CF) has tiny coverage, while content-based/random reach the long tail.
+The spread illustrates the project's thesis — **accuracy is not everything**: the LTR hybrid leads on
+accuracy, but content-based / random reach the long tail (coverage), and the re-ranker trades a little
+precision for the best diversity & serendipity.
+
+## Each model — purpose & limitation
+
+| Model | Purpose | Key limitation |
+|---|---|---|
+| Most Popular | Cold-start floor; needs zero personal history | One list for everyone; severe popularity bias |
+| Highest Average | Surfaces top-rated films | Hard min-vote cutoff discards the long tail |
+| Bayesian Average | Shrinks ratings toward the global mean by vote count | Still non-personalised |
+| Random | Honest lower bound + maximal coverage | ≈ 0 relevance |
+| Item-Item CF | "More like the films you rated" | Fragile on 98.3% sparsity (cold items) |
+| User-User CF | "What similar viewers loved" | Strong accuracy, narrow coverage; O(users²) |
+| Content-based | Reaches cold items via genres + TMDB text | Coarse features → low precision; no collaborative signal |
+| Matrix Factorization | Latent factors generalise through sparsity | Vanilla SVD; cold users need a fallback |
+| **LTR Hybrid** | Learns to combine every generator (LambdaRank) | Generators see only 75% of train (for leakage-free labels) |
+| **Re-ranker** | Injects diversity / novelty / trust (greedy MMR) | Deliberately trades a little precision |
+| **AI Guide (Gemini)** | Natural language → intent; conversational steering | LLM only parses & explains — never ranks; needs API quota |
 
 ## Run it
 
