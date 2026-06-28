@@ -7,12 +7,12 @@ dataset — multiple algorithms behind one clean architecture, with a polished R
 ## Architecture (three tiers)
 
 ```
-React (Vite + TS + Tailwind)  →  FastAPI REST  →  Python recommender core
+Next.js (React + TS + Tailwind)  →  FastAPI REST  →  Python recommender core
 ```
 
 - **`backend/src/`** — the engine; every algorithm implements one `Recommender` interface (`fit` / `recommend`).
-- **`backend/api/`** — FastAPI exposing every model over REST (`/api/recommend`, `/api/similar`, `/api/metrics`, …).
-- **`frontend/`** — React UI ("CineMatch"): pick a user + algorithm → movie grid, "more like this", live metrics.
+- **`backend/api/`** — FastAPI exposing every model over REST (`/api/home`, `/api/recommend`, `/api/similar`, `/api/metrics`, …).
+- **`frontend/`** — Next.js UI ("CineMatch"): Netflix-style multi-rail homepage, hero billboard, **Tonight's Arc** story rail, discovery slider, posters.
 
 The design is *registry-driven*: add a model in `src/`, register it in `api/registry.py`, and it
 appears automatically in the API, the evaluation harness, and the UI — no other changes needed.
@@ -24,13 +24,16 @@ appears automatically in the API, the evaluation harness, and the UI — no othe
 | Non-personalised | Most Popular · Highest Average · Bayesian Average · Random |
 | Collaborative filtering | Item-Item CF · User-User CF |
 | Content-based | TF-IDF over genres + tags + **TMDB** (overview/keywords/cast) · `similar_items` |
-| Matrix factorization | _(in progress)_ |
+| Matrix factorization | Truncated-SVD latent factors |
+| **Hybrid (Learning-to-Rank)** | LightGBM LambdaRank over all generators + insider studio-strategy features · MMR re-ranker (diversity/novelty/trust) |
 
 ## Results so far (P@10, per-user 80/20 split, k=10)
 
 | Model | P@10 | NDCG@10 | Coverage |
 |---|---|---|---|
-| user_user_cf | **0.168** | **0.217** | 0.030 |
+| user_user_cf | **0.168** | 0.217 | 0.030 |
+| ltr_hybrid | **0.168** | 0.212 | 0.051 |
+| ltr_reranked | 0.159 | 0.201 | 0.057 |
 | item_item_cf | 0.137 | 0.177 | 0.148 |
 | most_popular | 0.128 | 0.158 | 0.006 |
 | bayesian_avg | 0.079 | 0.096 | 0.004 |
@@ -54,7 +57,7 @@ py -m uvicorn api.main:app --port 8000      # REST API (http://127.0.0.1:8000/do
 ```bash
 cd frontend
 npm install
-npm run dev                                 # http://localhost:5173
+npm run dev                                 # http://localhost:3000
 ```
 
 ## Dataset

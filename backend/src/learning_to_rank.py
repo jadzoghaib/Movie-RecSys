@@ -27,6 +27,8 @@ from .collaborative_filtering import (
 )
 from .content_based import ContentBasedRecommender
 from .matrix_factorization import MatrixFactorizationRecommender
+from .tmdb import load_cache
+from .insider import insider_features, _KEYS as _INSIDER_KEYS
 
 _YEAR = re.compile(r"\((\d{4})\)")
 _GENS = ["pop", "ii", "uu", "mf", "cb"]
@@ -85,6 +87,10 @@ class LearningToRankRecommender(Recommender):
                 gs |= self.item_genres_.get(it_id, set())
             self.user_genres_[u] = gs
 
+        # insider studio-strategy features (E6-7) from the extended TMDB cache
+        cache = load_cache()
+        self.insider_ = {int(mid): insider_features(meta) for mid, meta in cache.items()}
+
     def _row(self, u, item, gd):
         row = {}
         nsrc, best = 0, np.nan
@@ -107,6 +113,9 @@ class LearningToRankRecommender(Recommender):
         row["i_ngenres"] = len(igen)
         row["genre_overlap"] = len(igen & self.user_genres_.get(u, set()))
         row["novelty"] = 1.0 / np.log2(2.0 + i_pop)
+        ins = self.insider_.get(item)
+        for key in _INSIDER_KEYS:
+            row[f"ins_{key}"] = ins[key] if ins else 0.0
         return row
 
     def _candidates(self, users):

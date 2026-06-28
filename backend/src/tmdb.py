@@ -60,6 +60,16 @@ def fetch_one(tmdb_id, key, retries=2):
                 "overview": d.get("overview") or "",
                 "keywords": [k["name"] for k in d.get("keywords", {}).get("keywords", [])],
                 "cast": [c["name"] for c in d.get("credits", {}).get("cast", [])[:8]],
+                # extended fields for the insider studio-strategy features
+                "runtime": d.get("runtime") or 0,
+                "original_language": d.get("original_language") or "",
+                "vote_average": d.get("vote_average") or 0.0,
+                "vote_count": d.get("vote_count") or 0,
+                "budget": d.get("budget") or 0,
+                "revenue": d.get("revenue") or 0,
+                "release_year": int(d["release_date"][:4]) if d.get("release_date") else None,
+                "collection": bool(d.get("belongs_to_collection")),
+                "n_companies": len(d.get("production_companies", [])),
             }
         except Exception:
             if attempt == retries:
@@ -110,7 +120,8 @@ def build_cache_concurrent(links_df, item_col=config.ITEM_COL, workers=10):
     cache = _load_cache()
     rows = links_df.dropna(subset=["tmdbId"])
     todo = [(str(int(m)), int(t)) for m, t in zip(rows[item_col], rows["tmdbId"])
-            if str(int(m)) not in cache or "error" in cache.get(str(int(m)), {})]
+            if str(int(m)) not in cache or "error" in cache.get(str(int(m)), {})
+            or "runtime" not in cache.get(str(int(m)), {})]   # re-fetch to add new fields
     print(f"{len(todo)} movies to fetch with {workers} workers", flush=True)
     done = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
