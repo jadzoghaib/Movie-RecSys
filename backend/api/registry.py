@@ -13,6 +13,7 @@ from src.collaborative_filtering import (
 )
 from src.content_based import ContentBasedRecommender
 from src.matrix_factorization import MatrixFactorizationRecommender
+from src.learning_to_rank import LearningToRankRecommender
 
 
 def build_models():
@@ -26,4 +27,5 @@ def build_models():
         UserUserCollaborativeFiltering(k=40),
         ContentBasedRecommender(use_tags=True),
         MatrixFactorizationRecommender(n_factors=50),
+        LearningToRankRecommender(cand_k=100),
     ]
