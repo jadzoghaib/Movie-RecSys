@@ -5,7 +5,31 @@
 **Dataset decision (LOCKED):** `ml-latest-small` is the single source of truth for *interactions* (ratings → the CF/MF user×item matrix). We do **not** concatenate other rating datasets (incompatible user/movie ID spaces + rating scales would corrupt CF/MF). Additional capability comes from **metadata enrichment joined on stable keys** (`links.csv`: movieId → tmdbId/imdbId), not from stacking rating sets. TMDB metadata is scheduled for Sprint 4 (see below).
 **Deliverables:** (1) Working prototype with UI · (2) Slide deck (technical challenges, method comparison, final remarks)
 **Grading:** Technical implementations **50%** · Evaluation **30%** · User Experience **20%**
-**Stack:** Python (recommender engine) → **FastAPI** REST backend → **React (Vite + TypeScript + Tailwind)** frontend
+**Stack (as built):** Python core → **FastAPI** REST → **Next.js** (React 19 + TypeScript + Tailwind v4) frontend. _(Pivoted from the originally-planned Vite/React + Streamlit during the build.)_
+
+---
+
+## ✅ Final build status (delivered — all 7 sprints)
+
+> The sprint plan & backlog further down are the *original plan*; this section records the *as-built* reality. Repo: **github.com/jadzoghaib/Movie-RecSys**.
+
+| Sprint | Delivered |
+|---|---|
+| 0 · Foundation | repo · dataset · per-user 80/20 split · evaluation harness · FastAPI + UI skeleton |
+| 1 · EDA | `notebooks/eda.py` → 6 figures + findings (98.3% sparse, long tail) |
+| 2 · Non-personalised | Most Popular · Highest-Avg · **Bayesian-Avg** · Random |
+| 3 · Collaborative | Item-Item CF · User-User CF (+ comparison) |
+| 4 · Content-based | TF-IDF (genres+tags) · **TMDB enrichment** (posters + overview/keywords/cast) |
+| 5 · Matrix factorization | truncated-SVD latent factors (k=50) |
+| 6 · Hybrid + evaluation | **LTR hybrid** (LightGBM LambdaRank, leakage-safe) · **MMR re-ranker** · beyond-accuracy metrics (diversity/novelty/serendipity) · **insider** studio-strategy + journey features |
+| 7 · Wow / UX | "Who's watching?" landing · multi-rail home · **Tonight's Arc** · discovery slider · grounded **chips + "why this"** explanations · **Gemini conversational guide** |
+
+**12 recommenders.** Best model: **`ltr_hybrid` — P@10 0.172, NDCG 0.219** (beats user-user CF 0.168). The re-ranker leads diversity (0.84) + serendipity (0.060) — the accuracy↔beyond-accuracy trade-off, demonstrated.
+
+**Routes:** `/` landing · `/u/[id]` home · `/u/[id]/chat` AI guide · `/evaluation` lab.
+**External:** TMDB (metadata/posters) · Gemini (NL intent parsing) — keys in gitignored `backend/.env`.
+
+**Deferred (optional):** the **slide deck** (the one remaining *required* deliverable) · TF-IDF-vs-raw comparison (E4-3) · MF tuning (E5-2) · explicit router (E6-5 — the LTR ranker already segments by user behaviour implicitly).
 
 ---
 
@@ -22,7 +46,7 @@ The prof's instruction is explicit: *"Use Agile development (basic evaluation fr
 - [ ] New method implements the common interface and is registered in the model registry
 - [ ] It produces top-N recommendations for any user without crashing
 - [ ] It appears as a new row in `results/metrics.csv` (P@10, Recall@10, NDCG@10, Coverage)
-- [ ] It is selectable/visible in the Streamlit UI
+- [ ] It is selectable/visible in the UI
 - [ ] A 2–3 sentence reflection captured in `notes/sprint_log.md` (what worked, what surprised you, one "technical challenge" for the slide deck)
 
 ### The common interface (the architectural backbone)
@@ -57,7 +81,11 @@ Every model (popular, CF, content, MF) subclasses this. The evaluator, the API, 
 | `GET /api/movies?search=` | movie search (id, title, genres, poster) for "rate these" |
 | `GET /api/recommend?user_id=&model=&n=` | top-N recs: `[{movie_id, title, genres, score, poster_url}]` |
 | `GET /api/similar?movie_id=&n=` | content-based "more like this" |
-| `GET /api/metrics` | the evaluation comparison table (drives a results view in the UI) |
+| `GET /api/metrics` | the evaluation comparison table |
+| `GET /api/home?user_id=&explore=&genre=` | _(as built)_ the whole homepage: arc + rails, each item with chips + "why" |
+| `GET /api/profiles` | _(as built)_ curated viewers for the "Who's watching?" landing |
+| `GET /api/genres` | _(as built)_ genre list for the filter |
+| `POST /api/chat` | _(as built)_ conversational guide: `{user_id, messages}` → Gemini intent → recommendations |
 
 ### Nice-UI enhancement: TMDB metadata enrichment (SCHEDULED → Sprint 4)
 MovieLens ships `links.csv` mapping each `movieId → tmdbId/imdbId`. In Sprint 4 the backend joins **TMDB metadata** onto our movies (poster art, overview, cast, keywords) on the stable `tmdbId` key. This serves two goals at once:
@@ -74,34 +102,34 @@ Prioritised. "As a user" = the end-user of the movie recommender; "As the analys
 
 Prioritised, with target sprint. Items tagged **[blueprint]** / **[research]** come from the production-blueprint triage (§3b) and the wow-factor research — they are now first-class tracked backlog items, not loose ideas.
 
-| ID | Epic | User Story | Priority | Sprint |
+| ID | Epic | User Story | Priority | Status |
 |----|------|-----------|----------|--------|
-| E0-1 | Foundation | repo + dataset + train/test split shared by all methods | MUST | 0 ✅ |
-| E0-2 | Foundation | evaluation harness (P@K, R@K, NDCG, MRR, Coverage) from day 1 | MUST | 0 ✅ |
-| E0-3 | UX | polished React UI: pick user/model → movie grid | MUST | 0 ✅ |
-| E0-4 | UX | FastAPI layer exposing every model over REST | MUST | 0 ✅ |
-| E1-1 | EDA | dataset stats + plots (sparsity, long tail, rating dist., genres) to justify design choices | MUST | 1 |
-| E2-1 | Non-personalised | popular / top-rated movies for cold-start | MUST | 2 |
-| E2-2 | Non-personalised | Bayesian-corrected average rating (popularity-bias guard) | COULD | 2 |
-| E3-1 | Collaborative | item-item + user-user CF recommendations | MUST | 3 |
-| E3-2 | Collaborative | user-user vs item-item comparison | SHOULD | 3 |
-| E4-1 | Content-based | genre/tag TF-IDF recommendations + `similar_items` | MUST | 4 |
-| E4-2 | Content-based | **TMDB enrichment** — posters (UX) + overview/cast/keyword features | SHOULD | 4 |
-| E4-3 | Content-based | TF-IDF vs raw genre vectors comparison | SHOULD | 4 |
-| E5-1 | Matrix Factorization | latent-factor recommendations (SVD/SGD) | MUST | 5 |
-| E5-2 | Matrix Factorization | k / latent-factor tuning | SHOULD | 5 |
-| E6-1 | Evaluation | full comparison table + beyond-accuracy (novelty, diversity, **serendipity**, coverage, popularity bias) | MUST | 6 |
-| E6-2 | Deck | slide deck telling the comparison + scoping story | MUST | 6 |
-| E6-3 | Hybrid | **Learning-to-Rank hybrid** — LightGBM LambdaRank over candidate-generator + match features (upgrades the naive blend) `[research]` | SHOULD | 6 |
-| E6-4 | Re-ranking | MMR diversity re-ranking `[blueprint]` | SHOULD | 6 |
-| E6-5 | Composition | **router / segmented meta-recommender** — route users to different recommenders by *behavioural* segment (cold/light→popularity/content, warm→CF/MF; no demographics in data) `[research]` | SHOULD | 6/7 |
-| E6-6 | Hybrid | LTR candidate-generation + feature table (cf/uu/mf/content/pop scores, graded labels, neg-sampling, leakage-safe split) `[research]` | SHOULD | 6 |
-| E6-7 | Differentiator | insider TMDB heuristic features (commercial-scale / prestige / crowdpleaser / watchability / franchise) — test via ranker feature importance `[research]` | COULD | 6 |
-| **E7-1** | **WOW ★** | **"Tonight's Arc" serendipitous story-arc rail** (sequenced trust→discovery journey) `[research]` | SHOULD | 7 |
-| E7-2 | UX | multi-rail homepage (Because-you-liked-X / Discover / Popular / genre) `[blueprint]` | SHOULD | 7 |
-| E7-3 | UX | structured negotiation panel (novelty slider + genre/language/year filters) `[research]` | SHOULD | 7 |
-| E7-4 | Trust | grounded multi-aspect explanations (genres ∩ keywords ∩ cast ∩ theme) `[research]` | SHOULD | 7 |
-| E7-5 | WOW (opt) | conversational LLM guide: free-text → constraints + faithful prose explanations `[research, Tier 2]` | COULD | 7 |
+| E0-1 | Foundation | repo + dataset + train/test split shared by all methods | MUST | ✅ done |
+| E0-2 | Foundation | evaluation harness (P@K, R@K, NDCG, MRR, Coverage) from day 1 | MUST | ✅ done |
+| E0-3 | UX | polished UI: pick user/model → movie grid | MUST | ✅ done |
+| E0-4 | UX | FastAPI layer exposing every model over REST | MUST | ✅ done |
+| E1-1 | EDA | dataset stats + plots (sparsity, long tail, rating dist., genres) | MUST | ✅ done |
+| E2-1 | Non-personalised | popular / top-rated movies for cold-start | MUST | ✅ done |
+| E2-2 | Non-personalised | Bayesian-corrected average rating (popularity-bias guard) | COULD | ✅ done |
+| E3-1 | Collaborative | item-item + user-user CF recommendations | MUST | ✅ done |
+| E3-2 | Collaborative | user-user vs item-item comparison | SHOULD | ✅ done |
+| E4-1 | Content-based | genre/tag TF-IDF recommendations + `similar_items` | MUST | ✅ done |
+| E4-2 | Content-based | **TMDB enrichment** — posters (UX) + overview/cast/keyword features | SHOULD | ✅ done |
+| E4-3 | Content-based | TF-IDF vs raw genre vectors comparison | SHOULD | ⬜ deferred |
+| E5-1 | Matrix Factorization | latent-factor recommendations (SVD/SGD) | MUST | ✅ done |
+| E5-2 | Matrix Factorization | k / latent-factor tuning | SHOULD | ⬜ deferred |
+| E6-1 | Evaluation | full comparison table + beyond-accuracy (novelty, diversity, **serendipity**, coverage, popularity bias) | MUST | ✅ done |
+| E6-2 | Deck | slide deck telling the comparison + scoping story | MUST | ⬜ **TODO (required)** |
+| E6-3 | Hybrid | **Learning-to-Rank hybrid** — LightGBM LambdaRank over candidate-generator + match features `[research]` | SHOULD | ✅ done |
+| E6-4 | Re-ranking | MMR diversity re-ranking `[blueprint]` | SHOULD | ✅ done |
+| E6-5 | Composition | router / segmented meta-recommender by behavioural segment `[research]` | SHOULD | ⬜ deferred (ranker segments implicitly) |
+| E6-6 | Hybrid | LTR candidate-generation + feature table (graded labels, neg-sampling, leakage-safe split) `[research]` | SHOULD | ✅ done |
+| E6-7 | Differentiator | insider TMDB heuristic features (commercial-scale / prestige / crowdpleaser / …) — feature-importance test `[research]` | COULD | ✅ done |
+| **E7-1** | **WOW ★** | **"Tonight's Arc" serendipitous story-arc rail** `[research]` | SHOULD | ✅ done |
+| E7-2 | UX | multi-rail homepage (Because-you-liked-X / Discover / Popular / genre) `[blueprint]` | SHOULD | ✅ done |
+| E7-3 | UX | discovery slider + genre filters (live re-rank) `[research]` | SHOULD | ✅ done |
+| E7-4 | Trust | grounded explanations (chips + "why this": genres ∩ keywords ∩ cast) `[research]` | SHOULD | ✅ done |
+| E7-5 | WOW (opt) | conversational LLM guide — free-text → intent → recommend (built with **Gemini**, not Claude) `[research]` | COULD | ✅ done |
 
 ---
 

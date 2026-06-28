@@ -100,6 +100,11 @@ npm install
 npm run dev                                 # http://localhost:3000
 ```
 
+Open **http://localhost:3000** → "Who's watching?" → pick a viewer.
+
+**Optional — external enrichment** (the app runs without these and falls back gracefully):
+create `backend/.env` with `TMDB_API_KEY=…` (posters + metadata) and `GEMINI_API_KEY=…` (the AI guide).
+
 ## Dataset
 
 MovieLens Latest Small (GroupLens), under `backend/data/raw/`.
