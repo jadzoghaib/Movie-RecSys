@@ -79,7 +79,15 @@ class ReRankedRecommender(Recommender):
         return len(ga & gb) / len(union) if union else 0.0
 
     def recommend(self, user_id, n=10, exclude_seen=True):
+        return self.rerank(user_id, n=n, exclude_seen=exclude_seen)
+
+    def rerank(self, user_id, n=10, beta=None, genre=None, exclude_seen=True):
+        """Re-rank with an optional custom novelty weight (beta) and genre filter
+        — this is what the UI's discovery slider + genre chips drive."""
+        beta = self.beta if beta is None else beta
         cands = self.base.recommend(user_id, n=self.pool, exclude_seen=exclude_seen)
+        if genre:
+            cands = [(i, s) for i, s in cands if genre in self.genres_.get(i, set())]
         if not cands:
             return []
         items = [i for i, _ in cands]
@@ -91,7 +99,7 @@ class ReRankedRecommender(Recommender):
         nov = nov / (nov.max() + 1e-9)
         fresh = np.array([self._freshness(i) for i in items])
         trust = np.array([self._trust(i) for i in items])
-        adj = self.alpha * bnorm + self.beta * nov + self.gamma * fresh + self.delta * trust
+        adj = self.alpha * bnorm + beta * nov + self.gamma * fresh + self.delta * trust
 
         # greedy MMR: balance adjusted score against genre similarity to picks
         selected, remaining = [], list(range(len(items)))
@@ -105,3 +113,30 @@ class ReRankedRecommender(Recommender):
             selected.append(best)
             remaining.remove(best)
         return [(int(items[i]), float(adj[i])) for i in selected]
+
+    def build_arc(self, user_id, n=4, explore=0.6):
+        """A curated 3-5 movie SEQUENCE: a trusted anchor -> a thematic drift
+        along rising novelty -> one serendipitous edge-of-cluster discovery.
+        Grounded: anchor = top relevance; links by genre similarity; the final
+        pick is the most novel candidate. Returns ordered movie ids."""
+        cands = self.base.recommend(user_id, n=30, exclude_seen=True)
+        if len(cands) < 2:
+            return [i for i, _ in cands]
+        items = [i for i, _ in cands]
+        nov = {i: self._novelty(i) for i in items}
+        nmax = max(nov.values()) or 1.0
+        anchor = items[0]                                   # most relevant = trusted
+        discovery = max(items[1:], key=lambda i: nov[i])    # most novel = the discovery
+        seq, used = [anchor], {anchor}
+        while len(seq) < n - 1:
+            prev = seq[-1]
+            pool = [i for i in items if i not in used and i != discovery]
+            if not pool:
+                break
+            nxt = max(pool, key=lambda i: self._gsim(prev, i) * (0.4 + explore * nov[i] / nmax)
+                      + 0.01 * nov[i] / nmax)
+            seq.append(nxt)
+            used.add(nxt)
+        if discovery not in used:
+            seq.append(discovery)
+        return seq[:n]

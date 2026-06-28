@@ -26,6 +26,9 @@ export interface Metric {
   n_users: number
 }
 
+export interface Rail { title: string; items: Movie[] }
+export interface Home { user_id: number; arc: { caption: string; items: Movie[] }; rails: Rail[] }
+
 const get = <T,>(path: string) => fetch(`${BASE}${path}`).then((r) => r.json() as Promise<T>)
 
 export const api = {
@@ -36,4 +39,7 @@ export const api = {
       `/api/recommend?user_id=${userId}&model=${model}&n=${n}`,
     ),
   metrics: () => get<Metric[]>('/api/metrics'),
+  genres: () => get<string[]>('/api/genres'),
+  home: (userId: number, explore: number, genre: string) =>
+    get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}`),
 }

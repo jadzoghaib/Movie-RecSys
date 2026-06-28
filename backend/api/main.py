@@ -93,6 +93,35 @@ def _enrich(item_id, score=None):
     return out
 
 
+def _enrich_list(recs, genre=None):
+    out = []
+    for item, score in recs:
+        m = _enrich(item, score)
+        if genre and genre not in m["genres"]:
+            continue
+        out.append(m)
+    return out
+
+
+def _user_seed(user_id):
+    """The user's highest-rated training movie — seed for 'Because you liked X'."""
+    tr = STATE["train"]
+    rows = tr[tr[config.USER_COL] == int(user_id)]
+    if rows.empty:
+        return None
+    mid = int(rows.sort_values(config.RATING_COL, ascending=False).iloc[0][config.ITEM_COL])
+    return STATE["item_meta"].get(mid)
+
+
+def _arc_caption(items):
+    if len(items) < 2:
+        return "Tonight's arc"
+    g0 = items[0]["genres"][0] if items[0]["genres"] else "favourite"
+    gl = items[-1]["genres"][0] if items[-1]["genres"] else "discovery"
+    return (f"Start with a {g0} pick you'll trust, then drift toward a "
+            f"lesser-known {gl} discovery.")
+
+
 @app.get("/api/health")
 def health():
     return {
@@ -166,6 +195,49 @@ def similar(movie_id: int, n: int = 10):
     scored.sort(key=lambda x: -x[0])
     return {"movie_id": movie_id,
             "items": [{**m, "score": round(j, 4)} for j, m in scored[:n]]}
+
+
+@app.get("/api/genres")
+def genres():
+    s = set()
+    for m in STATE["item_meta"].values():
+        s.update(m["genres"])
+    return sorted(s)
+
+
+@app.get("/api/home")
+def home(user_id: int, explore: float = 0.4, genre: str = ""):
+    """One call powers the multi-rail homepage: the story-arc + several rails,
+    shaped by the discovery slider (explore) and an optional genre filter."""
+    models = STATE["models"]
+    g = genre.strip() or None
+    rr = models.get("ltr_reranked")
+    rails = []
+
+    top = (rr.recommend(user_id, n=14) if rr
+           else models["user_user_cf"].recommend(user_id, n=14))
+    rails.append({"title": "Top picks for you", "items": _enrich_list(top, g)})
+
+    seed = _user_seed(user_id)
+    if seed and "content_based" in models:
+        sim = models["content_based"].similar_items(seed["movie_id"], n=14)
+        rails.append({"title": f"Because you liked {seed['title']}",
+                      "items": _enrich_list(sim, g)})
+
+    if rr:
+        disc = rr.rerank(user_id, n=14, beta=0.3 + 1.4 * explore, genre=g)
+        rails.append({"title": "Discover", "items": _enrich_list(disc, None)})
+
+    pop = models["most_popular"].recommend(user_id, n=14)
+    rails.append({"title": "Popular now", "items": _enrich_list(pop, g)})
+
+    arc_ids = rr.build_arc(user_id, n=4, explore=0.6) if rr else []
+    arc_items = [_enrich(i) for i in arc_ids]
+    return {
+        "user_id": user_id,
+        "arc": {"caption": _arc_caption(arc_items), "items": arc_items},
+        "rails": [r for r in rails if r["items"]],
+    }
 
 
 @app.get("/api/metrics")
