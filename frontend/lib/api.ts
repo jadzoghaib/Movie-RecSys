@@ -9,6 +9,8 @@ export interface Movie {
   poster_url?: string | null
   overview?: string
   score?: number
+  chips?: string[]
+  arc_note?: string
 }
 
 export interface ModelInfo { id: string; label: string; description: string }

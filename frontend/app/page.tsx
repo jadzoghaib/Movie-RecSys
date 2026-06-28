@@ -108,6 +108,9 @@ function Hero({ movie }: { movie: Movie }) {
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-500">Top pick for you</p>
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight">{movie.title}</h1>
           <div className="mt-3 flex flex-wrap gap-2">
+            {movie.chips?.map((c) => (
+              <span key={c} className="rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">{c}</span>
+            ))}
             {movie.genres.map((g) => (
               <span key={g} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-zinc-300">{g}</span>
             ))}
@@ -137,7 +140,10 @@ function ArcRail({ caption, items }: { caption: string; items: Movie[] }) {
       <div className="flex items-stretch gap-3 overflow-x-auto pb-1">
         {items.map((m, i) => (
           <div key={m.movie_id} className="flex items-center gap-3">
-            <div className="w-[150px] shrink-0"><PosterCard movie={m} badge={`${i + 1}`} /></div>
+            <div className="w-[150px] shrink-0">
+              <PosterCard movie={m} badge={`${i + 1}`} />
+              {m.arc_note && <p className="mt-1.5 text-center text-[10px] font-medium text-fuchsia-300/90">{m.arc_note}</p>}
+            </div>
             {i < items.length - 1 && <span className="text-2xl text-fuchsia-400/60">→</span>}
           </div>
         ))}
@@ -179,6 +185,13 @@ function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
         )}
         {badge && (
           <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-fuchsia-600 text-xs font-bold text-white shadow">{badge}</span>
+        )}
+        {movie.chips && movie.chips.length > 0 && (
+          <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
+            {movie.chips.map((c) => (
+              <span key={c} className="rounded bg-red-600/90 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white shadow">{c}</span>
+            ))}
+          </div>
         )}
         <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/95 via-black/70 to-transparent p-2 transition group-hover:translate-y-0">
           <p className="line-clamp-2 text-[11px] font-medium text-white">{movie.title}</p>

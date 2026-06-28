@@ -15,6 +15,7 @@ from src.data_loading import (
 )
 from src.tmdb import load_cache
 from src.reranking import ReRankedRecommender
+from src.explain import movie_chip_map
 from api.registry import build_models
 
 STATE = {}
@@ -59,6 +60,11 @@ def build_state():
             "tmdb_url": (f"https://www.themoviedb.org/movie/{int(tmdb)}"
                         if pd.notna(tmdb) else None),
         }
+
+    # grounded explanation chips per movie (Hidden Gem / Prestige / Comfort Watch / …)
+    chip_map = movie_chip_map(item_meta, tmdb_cache, train[config.ITEM_COL].value_counts())
+    for mid, ch in chip_map.items():
+        item_meta[mid]["chips"] = ch
 
     STATE.update(
         ratings=ratings, train=train, test=test, models=models,
@@ -234,6 +240,11 @@ def home(user_id: int, explore: float = 0.4, genre: str = ""):
 
     arc_ids = rr.build_arc(user_id, n=4, explore=0.6) if rr else []
     arc_items = [_enrich(i) for i in arc_ids]
+    notes = ["Trusted opener", "A step outward", "Going deeper", "The discovery"]
+    for idx, it in enumerate(arc_items):
+        it["arc_note"] = notes[idx] if idx < len(notes) else "Discovery"
+    if len(arc_items) >= 2:
+        arc_items[-1]["arc_note"] = "The discovery"
     return {
         "user_id": user_id,
         "arc": {"caption": _arc_caption(arc_items), "items": arc_items},

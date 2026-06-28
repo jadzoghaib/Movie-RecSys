@@ -87,9 +87,10 @@ class LearningToRankRecommender(Recommender):
                 gs |= self.item_genres_.get(it_id, set())
             self.user_genres_[u] = gs
 
-        # insider studio-strategy features (E6-7) from the extended TMDB cache
+        # insider studio-strategy + journey features (E6-7) from the extended TMDB cache
         cache = load_cache()
-        self.insider_ = {int(mid): insider_features(meta) for mid, meta in cache.items()}
+        self.insider_ = {int(mid): insider_features(meta, self.item_genres_.get(int(mid)))
+                         for mid, meta in cache.items()}
 
     def _row(self, u, item, gd):
         row = {}
