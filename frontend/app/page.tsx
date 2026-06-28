@@ -115,7 +115,10 @@ function Hero({ movie }: { movie: Movie }) {
               <span key={g} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-zinc-300">{g}</span>
             ))}
           </div>
-          {movie.overview && <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-zinc-300">{movie.overview}</p>}
+          {movie.why && (
+            <p className="mt-3 text-sm font-medium text-red-300">💡 {movie.why}</p>
+          )}
+          {movie.overview && <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-zinc-400">{movie.overview}</p>}
           <div className="mt-5 flex gap-3">
             <a href={movie.tmdb_url ?? '#'} target="_blank" rel="noreferrer"
                className="rounded-md bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-500">
@@ -157,7 +160,8 @@ function Rail({ rail }: { rail: RailT }) {
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * 600, behavior: 'smooth' })
   return (
     <section className="group/rail mb-8">
-      <h2 className="mb-3 text-base font-semibold text-zinc-200">{rail.title}</h2>
+      <h2 className="text-base font-semibold text-zinc-200">{rail.title}</h2>
+      {rail.subtitle && <p className="mb-3 text-[11px] uppercase tracking-wide text-zinc-600">{rail.subtitle}</p>}
       <div className="relative">
         <button onClick={() => scroll(-1)} aria-label="scroll left"
           className="absolute -left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-zinc-200 opacity-0 transition group-hover/rail:flex group-hover/rail:opacity-100 hover:bg-black">‹</button>
@@ -193,8 +197,9 @@ function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
             ))}
           </div>
         )}
-        <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/95 via-black/70 to-transparent p-2 transition group-hover:translate-y-0">
+        <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/95 via-black/80 to-transparent p-2 transition group-hover:translate-y-0">
           <p className="line-clamp-2 text-[11px] font-medium text-white">{movie.title}</p>
+          {movie.why && <p className="mt-1 line-clamp-3 text-[9px] leading-snug text-red-300/90">{movie.why}</p>}
           <div className="mt-1 flex flex-wrap gap-1">
             {movie.genres.slice(0, 2).map((g) => (
               <span key={g} className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] text-zinc-200">{g}</span>

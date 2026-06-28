@@ -15,7 +15,7 @@ from src.data_loading import (
 )
 from src.tmdb import load_cache
 from src.reranking import ReRankedRecommender
-from src.explain import movie_chip_map
+from src.explain import movie_chip_map, user_taste, why_recommended
 from api.registry import build_models
 
 STATE = {}
@@ -68,7 +68,7 @@ def build_state():
 
     STATE.update(
         ratings=ratings, train=train, test=test, models=models,
-        item_meta=item_meta,
+        item_meta=item_meta, tmdb_cache=tmdb_cache,
         user_counts=ratings[config.USER_COL].value_counts(),
     )
 
@@ -221,22 +221,26 @@ def home(user_id: int, explore: float = 0.4, genre: str = ""):
     rr = models.get("ltr_reranked")
     rails = []
 
-    top = (rr.recommend(user_id, n=14) if rr
+    # Top picks now shift with the discovery slider (explore -> novelty weight)
+    top = (rr.rerank(user_id, n=14, beta=0.25 + 0.7 * explore, genre=g) if rr
            else models["user_user_cf"].recommend(user_id, n=14))
-    rails.append({"title": "Top picks for you", "items": _enrich_list(top, g)})
+    rails.append({"title": "Top picks for you", "subtitle": "Learning-to-Rank hybrid + re-ranking",
+                  "items": _enrich_list(top, None if rr else g)})
 
     seed = _user_seed(user_id)
     if seed and "content_based" in models:
         sim = models["content_based"].similar_items(seed["movie_id"], n=14)
-        rails.append({"title": f"Because you liked {seed['title']}",
+        rails.append({"title": f"Because you liked {seed['title']}", "subtitle": "Content similarity",
                       "items": _enrich_list(sim, g)})
 
     if rr:
         disc = rr.rerank(user_id, n=14, beta=0.3 + 1.4 * explore, genre=g)
-        rails.append({"title": "Discover", "items": _enrich_list(disc, None)})
+        rails.append({"title": "Discover", "subtitle": "Novelty-boosted re-ranking",
+                      "items": _enrich_list(disc, None)})
 
     pop = models["most_popular"].recommend(user_id, n=14)
-    rails.append({"title": "Popular now", "items": _enrich_list(pop, g)})
+    rails.append({"title": "Popular now", "subtitle": "Most popular · non-personalised",
+                  "items": _enrich_list(pop, g)})
 
     arc_ids = rr.build_arc(user_id, n=4, explore=0.6) if rr else []
     arc_items = [_enrich(i) for i in arc_ids]
@@ -245,6 +249,19 @@ def home(user_id: int, explore: float = 0.4, genre: str = ""):
         it["arc_note"] = notes[idx] if idx < len(notes) else "Discovery"
     if len(arc_items) >= 2:
         arc_items[-1]["arc_note"] = "The discovery"
+
+    # grounded "why this" explanation per recommendation
+    taste = user_taste(user_id, STATE["train"], STATE["item_meta"], STATE["tmdb_cache"])
+    cache = STATE["tmdb_cache"]
+
+    def annotate(items):
+        for it in items:
+            it["why"] = why_recommended(it, cache.get(str(it["movie_id"])), taste)
+
+    for r in rails:
+        annotate(r["items"])
+    annotate(arc_items)
+
     return {
         "user_id": user_id,
         "arc": {"caption": _arc_caption(arc_items), "items": arc_items},

@@ -11,6 +11,7 @@ export interface Movie {
   score?: number
   chips?: string[]
   arc_note?: string
+  why?: string
 }
 
 export interface ModelInfo { id: string; label: string; description: string }
@@ -31,7 +32,7 @@ export interface Metric {
   serendipity?: number
 }
 
-export interface Rail { title: string; items: Movie[] }
+export interface Rail { title: string; subtitle?: string; items: Movie[] }
 export interface Home { user_id: number; arc: { caption: string; items: Movie[] }; rails: Rail[] }
 
 const get = <T,>(path: string) => fetch(`${BASE}${path}`).then((r) => r.json() as Promise<T>)

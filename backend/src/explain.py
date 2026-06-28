@@ -5,9 +5,12 @@ TMDB vote signals), NOT from an LLM. Thresholds are data-driven (per-dimension
 quantiles across the catalog) so the chips stay meaningful as the data changes.
 """
 
+from collections import Counter
+
 import numpy as np
 import pandas as pd
 
+from .config import USER_COL, ITEM_COL, RATING_COL
 from .insider import insider_features
 
 _THR_DIMS = ["prestige", "comfort", "spectacle"]
@@ -60,3 +63,47 @@ def movie_chip_map(item_meta, tmdb_cache, counts):
                           int(counts.get(mid, 0)), float(pct.get(mid, 0.5)),
                           bool(c.get("collection", False)), thr)
     return out
+
+
+def user_taste(user_id, train, item_meta, tmdb_cache):
+    """A user's taste profile (top genres / keywords / cast) from films rated >= 4."""
+    rows = train[(train[USER_COL] == int(user_id)) & (train[RATING_COL] >= 4)]
+    genres, kws, cast = Counter(), Counter(), Counter()
+    for mid in rows[ITEM_COL]:
+        meta = item_meta.get(int(mid))
+        if meta:
+            genres.update(meta.get("genres", []))
+        c = tmdb_cache.get(str(int(mid)))
+        if c and "error" not in c:
+            kws.update(c.get("keywords", []))
+            cast.update(c.get("cast", []))
+    return {
+        "genres": [g for g, _ in genres.most_common(3)],
+        "keywords": {k for k, _ in kws.most_common(50)},
+        "cast": {c for c, _ in cast.most_common(30)},
+    }
+
+
+def why_recommended(meta, cache_entry, taste):
+    """A short, grounded 'why this' sentence tied to the user's actual taste."""
+    cache_entry = cache_entry or {}
+    parts = []
+    shared_g = [g for g in meta.get("genres", []) if g in taste["genres"]]
+    if shared_g:
+        parts.append(f"matches your taste for {' & '.join(shared_g[:2])}")
+    shared_cast = [a for a in cache_entry.get("cast", []) if a in taste["cast"]]
+    shared_kw = [k for k in cache_entry.get("keywords", []) if k in taste["keywords"]]
+    if shared_cast:
+        parts.append(f"features {shared_cast[0]}, who you've enjoyed")
+    elif shared_kw:
+        parts.append(f"shares {', '.join(shared_kw[:2])} with films you rated highly")
+    if parts:
+        return "Because it " + " and ".join(parts) + "."
+    chips = meta.get("chips", [])
+    if "Hidden Gem" in chips:
+        return "A hidden-gem discovery beyond your usual watches."
+    if "Prestige" in chips:
+        return "A prestige pick with strong critical signals."
+    if "Acclaimed" in chips:
+        return "Broadly acclaimed and widely loved."
+    return "A popular pick worth exploring."
