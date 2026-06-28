@@ -70,6 +70,7 @@ def build_state():
         ratings=ratings, train=train, test=test, models=models,
         item_meta=item_meta, tmdb_cache=tmdb_cache,
         user_counts=ratings[config.USER_COL].value_counts(),
+        profiles=_compute_profiles(train, item_meta),
     )
 
 
@@ -107,6 +108,39 @@ def _enrich_list(recs, genre=None):
         if genre and genre not in m["genres"]:
             continue
         out.append(m)
+    return out
+
+
+def _compute_profiles(train, item_meta, n=8):
+    """A diverse, curated set of sample viewers for the 'Who's watching?' landing —
+    the most active user per dominant genre, with their favourite film + top genres."""
+    from collections import Counter
+    counts = train[config.USER_COL].value_counts()
+    liked = train[train[config.RATING_COL] >= 4]
+    top_genre, genres_by_user = {}, {}
+    for u, grp in liked.groupby(config.USER_COL):
+        gc = Counter()
+        for mid in grp[config.ITEM_COL]:
+            m = item_meta.get(int(mid))
+            if m:
+                gc.update(m["genres"])
+        genres_by_user[u] = [g for g, _ in gc.most_common(3)]
+        if gc:
+            top_genre[u] = gc.most_common(1)[0][0]
+    by_genre = {}
+    for u, g in top_genre.items():
+        if g not in by_genre or counts[u] > counts[by_genre[g]]:
+            by_genre[g] = u
+    chosen = sorted(by_genre.values(), key=lambda u: -counts[u])[:n]
+    out = []
+    for u in chosen:
+        urows = train[train[config.USER_COL] == u].sort_values(config.RATING_COL, ascending=False)
+        fav = item_meta.get(int(urows.iloc[0][config.ITEM_COL]), {})
+        out.append({
+            "user_id": int(u), "n_ratings": int(counts[u]),
+            "top_genres": genres_by_user.get(u, []),
+            "fav_title": fav.get("title"), "fav_poster": fav.get("poster_url"),
+        })
     return out
 
 
@@ -202,6 +236,11 @@ def similar(movie_id: int, n: int = 10):
     scored.sort(key=lambda x: -x[0])
     return {"movie_id": movie_id,
             "items": [{**m, "score": round(j, 4)} for j, m in scored[:n]]}
+
+
+@app.get("/api/profiles")
+def profiles():
+    return STATE.get("profiles", [])
 
 
 @app.get("/api/genres")

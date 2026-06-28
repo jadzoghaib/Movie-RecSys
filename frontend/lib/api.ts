@@ -34,6 +34,13 @@ export interface Metric {
 
 export interface Rail { title: string; subtitle?: string; items: Movie[] }
 export interface Home { user_id: number; arc: { caption: string; items: Movie[] }; rails: Rail[] }
+export interface Profile {
+  user_id: number
+  n_ratings: number
+  top_genres: string[]
+  fav_title: string | null
+  fav_poster: string | null
+}
 
 const get = <T,>(path: string) => fetch(`${BASE}${path}`).then((r) => r.json() as Promise<T>)
 
@@ -42,6 +49,7 @@ export const api = {
   users: (limit = 30) => get<UserInfo[]>(`/api/users?limit=${limit}`),
   metrics: () => get<Metric[]>('/api/metrics'),
   genres: () => get<string[]>('/api/genres'),
+  profiles: () => get<Profile[]>('/api/profiles'),
   home: (userId: number, explore: number, genre: string) =>
     get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}`),
 }
