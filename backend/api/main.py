@@ -14,6 +14,7 @@ from src.data_loading import (
     load_ratings, load_items, load_links, train_test_split_ratings,
 )
 from src.tmdb import load_cache
+from src.reranking import ReRankedRecommender
 from api.registry import build_models
 
 STATE = {}
@@ -31,6 +32,12 @@ def build_state():
     for model in build_models():
         model.fit(train, items)
         models[model.name] = model
+
+    # re-ranked LTR reuses the already-fitted hybrid (no second LTR fit)
+    if "ltr_hybrid" in models:
+        rr = ReRankedRecommender(base=models["ltr_hybrid"])
+        rr.fit(train, items, fit_base=False)
+        models[rr.name] = rr
 
     if links is not None:
         items = items.merge(links[[config.ITEM_COL, "tmdbId", "imdbId"]],

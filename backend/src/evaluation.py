@@ -67,21 +67,67 @@ def catalog_coverage(recommended_items, all_items):
     return len(set(recommended_items) & catalog) / len(catalog)
 
 
-def evaluate_model(model, train_df, test_df, users=None, k=10,
-                   relevance_threshold=RELEVANCE_THRESHOLD):
-    """Evaluate a fitted model over the test users and return mean metrics.
+# -- beyond-accuracy metrics (the prof's "accuracy is not enough") -----------
 
-    Relevance = held-out items the user rated >= ``relevance_threshold``.
-    Recommendations exclude items already seen in train.
+def intra_list_diversity(recommended, item_genres):
+    """Average pairwise genre dissimilarity (1 - Jaccard) within the list."""
+    items = [i for i in recommended if i in item_genres]
+    if len(items) < 2:
+        return 0.0
+    dissims = []
+    for a in range(len(items)):
+        for b in range(a + 1, len(items)):
+            ga, gb = item_genres[items[a]], item_genres[items[b]]
+            union = ga | gb
+            jac = len(ga & gb) / len(union) if union else 0.0
+            dissims.append(1.0 - jac)
+    return float(np.mean(dissims)) if dissims else 0.0
+
+
+def novelty_score(recommended, popularity, n_users):
+    """Mean self-information -log2(p_i) of the list (higher = more novel)."""
+    if not recommended:
+        return 0.0
+    vals = [-np.log2((popularity.get(i, 0) + 1) / (n_users + 1)) for i in recommended]
+    return float(np.mean(vals))
+
+
+def serendipity(recommended, relevant, popular_set, k=10):
+    """Share of top-k that are relevant AND non-obvious (not in the popular set)."""
+    rec = recommended[:k]
+    if not rec:
+        return 0.0
+    return sum(1 for i in rec if i in relevant and i not in popular_set) / k
+
+
+def evaluate_model(model, train_df, test_df, users=None, k=10,
+                   relevance_threshold=RELEVANCE_THRESHOLD, items_df=None):
+    """Evaluate a fitted model; accuracy + (optionally) beyond-accuracy metrics.
+
+    Relevance = held-out items rated >= ``relevance_threshold``. If ``items_df``
+    is given, also computes intra-list diversity, novelty and serendipity.
     """
     test_pos = test_df[test_df[RATING_COL] >= relevance_threshold]
     relevant_by_user = test_pos.groupby(USER_COL)[ITEM_COL].agg(set).to_dict()
-
     if users is None:
         users = list(relevant_by_user.keys())
 
     catalog = train_df[ITEM_COL].unique()
+
+    item_genres = popularity = n_users = popular_set = None
+    if items_df is not None:
+        item_genres = {}
+        for r in items_df.itertuples(index=False):
+            g = set(str(r.genres).split("|"))
+            g.discard("(no genres listed)")
+            item_genres[r.movieId] = g
+        pop = train_df[ITEM_COL].value_counts()
+        n_users = int(train_df[USER_COL].nunique())
+        popular_set = set(pop.head(50).index)
+        popularity = pop.to_dict()
+
     precisions, recalls, ndcgs, mrrs, hits = [], [], [], [], []
+    divs, novs, sers = [], [], []
     recommended_all = set()
     n_eval = 0
 
@@ -96,10 +142,14 @@ def evaluate_model(model, train_df, test_df, users=None, k=10,
         ndcgs.append(ndcg_at_k(recs, relevant, k))
         mrrs.append(mean_reciprocal_rank(recs, relevant, k))
         hits.append(hit_rate_at_k(recs, relevant, k))
+        if items_df is not None:
+            divs.append(intra_list_diversity(recs, item_genres))
+            novs.append(novelty_score(recs, popularity, n_users))
+            sers.append(serendipity(recs, relevant, popular_set, k))
         n_eval += 1
 
     mean = lambda xs: float(np.mean(xs)) if xs else 0.0
-    return {
+    out = {
         "model": getattr(model, "name", "model"),
         "k": k,
         "precision@k": mean(precisions),
@@ -110,3 +160,8 @@ def evaluate_model(model, train_df, test_df, users=None, k=10,
         "coverage": catalog_coverage(recommended_all, catalog),
         "n_users": n_eval,
     }
+    if items_df is not None:
+        out["diversity"] = mean(divs)
+        out["novelty"] = mean(novs)
+        out["serendipity"] = mean(sers)
+    return out

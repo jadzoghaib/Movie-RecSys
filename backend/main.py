@@ -21,6 +21,7 @@ from src.collaborative_filtering import (
 from src.content_based import ContentBasedRecommender
 from src.matrix_factorization import MatrixFactorizationRecommender
 from src.learning_to_rank import LearningToRankRecommender
+from src.reranking import ReRankedRecommender
 from src.evaluation import evaluate_model
 
 
@@ -43,20 +44,21 @@ def main():
         ContentBasedRecommender(use_tags=True),
         MatrixFactorizationRecommender(n_factors=50),
         LearningToRankRecommender(cand_k=100),
+        ReRankedRecommender(LearningToRankRecommender(cand_k=100)),
     ]
 
     rows = []
     for model in models:
         model.fit(train, items)
-        res = evaluate_model(model, train, test, k=config.TOP_K)
+        res = evaluate_model(model, train, test, k=config.TOP_K, items_df=items)
         rows.append(res)
-        print(f"  {res['model']:<16} "
-              f"P@{res['k']}={res['precision@k']:.3f}  "
-              f"R@{res['k']}={res['recall@k']:.3f}  "
-              f"NDCG={res['ndcg@k']:.3f}  "
-              f"MRR={res['mrr@k']:.3f}  "
-              f"Cov={res['coverage']:.3f}  "
-              f"(n={res['n_users']})")
+        print(f"  {res['model']:<20} "
+              f"P@{res['k']}={res['precision@k']:.3f} "
+              f"NDCG={res['ndcg@k']:.3f} "
+              f"Cov={res['coverage']:.3f} "
+              f"Div={res.get('diversity', 0):.2f} "
+              f"Nov={res.get('novelty', 0):.1f} "
+              f"Ser={res.get('serendipity', 0):.3f}")
 
     config.RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = config.RESULTS_DIR / "metrics.csv"
