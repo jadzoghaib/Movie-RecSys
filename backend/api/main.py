@@ -359,20 +359,30 @@ def genres():
 
 
 @app.get("/api/home")
-def home(user_id: int, explore: float = 0.4, genre: str = "", anchor: int = 0):
+def home(user_id: int, explore: float = 0.4, genre: str = "", anchor: int = 0, model: str = ""):
     """One call powers the multi-rail homepage: the story-arc + several rails,
-    shaped by the discovery slider (explore), an optional genre filter, and an
-    optional `anchor` movie that re-seeds the 'Because you liked' rail."""
+    shaped by the discovery slider (explore), an optional genre filter, an
+    optional `anchor` movie that re-seeds 'Because you liked' + the arc, and an
+    optional `model` that pins the Top-picks rail to a specific recommender
+    (so the evaluation table can show how each model's metrics translate into
+    real recommendations)."""
     models = STATE["models"]
     g = genre.strip() or None
     rr = models.get("ltr_reranked")
     rails = []
 
-    # Top picks now shift with the discovery slider (explore -> novelty weight)
-    top = (rr.rerank(user_id, n=14, beta=0.25 + 0.7 * explore, genre=g) if rr
-           else models["user_user_cf"].recommend(user_id, n=14))
-    rails.append({"title": "Top picks for you", "subtitle": "Learning-to-Rank hybrid + re-ranking",
-                  "items": _enrich_list(top, None if rr else g)})
+    # Top picks: by default the LTR hybrid + re-ranker (slider widens novelty),
+    # but the eval table can pin any model here to make its behaviour tangible.
+    chosen = models.get(model) if model else None
+    if chosen is not None:
+        top, top_sub = chosen.recommend(user_id, n=14), chosen.description
+    elif rr:
+        top, top_sub = rr.rerank(user_id, n=14, beta=0.25 + 0.7 * explore, genre=g), "Learning-to-Rank hybrid + re-ranking"
+    else:
+        top, top_sub = models["user_user_cf"].recommend(user_id, n=14), "User-user collaborative filtering"
+    rails.append({"title": "Top picks for you", "subtitle": top_sub,
+                  "active_model": chosen.label if chosen else None,
+                  "items": _enrich_list(top, None if (rr and chosen is None) else g)})
 
     seed = STATE["item_meta"].get(anchor) if anchor else _user_seed(user_id)
     if seed and "content_based" in models:
@@ -389,7 +399,7 @@ def home(user_id: int, explore: float = 0.4, genre: str = "", anchor: int = 0):
     rails.append({"title": "Popular now", "subtitle": "Most popular · non-personalised",
                   "items": _enrich_list(pop, g)})
 
-    arc_ids = rr.build_arc(user_id, n=4, explore=0.6) if rr else []
+    arc_ids = rr.build_arc(user_id, n=4, explore=explore, seed=anchor or None) if rr else []
     arc_items = [_enrich(i) for i in arc_ids]
     notes = ["Trusted opener", "A step outward", "Going deeper", "The discovery"]
     for idx, it in enumerate(arc_items):

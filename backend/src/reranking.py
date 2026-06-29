@@ -114,27 +114,36 @@ class ReRankedRecommender(Recommender):
             remaining.remove(best)
         return [(int(items[i]), float(adj[i])) for i in selected]
 
-    def build_arc(self, user_id, n=4, explore=0.6):
+    def build_arc(self, user_id, n=4, explore=0.6, seed=None):
         """A curated 3-5 movie SEQUENCE: a trusted anchor -> a thematic drift
         along rising novelty -> one serendipitous edge-of-cluster discovery.
         Grounded: anchor = top relevance; links by genre similarity; the final
-        pick is the most novel candidate. Returns ordered movie ids."""
-        cands = self.base.recommend(user_id, n=30, exclude_seen=True)
+        pick is the most novel candidate. Returns ordered movie ids.
+
+        `explore` (the discovery slider) widens the novelty drift; `seed` (an
+        anchor movie the user picked) overrides the trusted opener so the whole
+        journey departs *from that film*."""
+        pool_n = 30 + int(50 * explore)                     # explore widens the pool -> more long-tail options
+        cands = self.base.recommend(user_id, n=pool_n, exclude_seen=True)
         if len(cands) < 2:
             return [i for i, _ in cands]
         items = [i for i, _ in cands]
+        if seed is not None:                                # journey departs from the chosen anchor
+            seed = int(seed)
+            items = [seed] + [i for i in items if i != seed]
         nov = {i: self._novelty(i) for i in items}
         nmax = max(nov.values()) or 1.0
-        anchor = items[0]                                   # most relevant = trusted
-        discovery = max(items[1:], key=lambda i: nov[i])    # most novel = the discovery
+        anchor = items[0]                                   # most relevant (or the seed) = trusted opener
+        discovery = max(items[1:], key=lambda i: nov[i])    # most novel = the serendipitous closer
         seq, used = [anchor], {anchor}
         while len(seq) < n - 1:
             prev = seq[-1]
             pool = [i for i in items if i not in used and i != discovery]
             if not pool:
                 break
-            nxt = max(pool, key=lambda i: self._gsim(prev, i) * (0.4 + explore * nov[i] / nmax)
-                      + 0.01 * nov[i] / nmax)
+            # low explore -> stay genre-coherent (gsim); high explore -> drift toward novelty
+            nxt = max(pool, key=lambda i: (1.0 - explore) * self._gsim(prev, i)
+                      + explore * (nov[i] / nmax))
             seq.append(nxt)
             used.add(nxt)
         if discovery not in used:

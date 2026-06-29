@@ -32,7 +32,7 @@ export interface Metric {
   serendipity?: number
 }
 
-export interface Rail { title: string; subtitle?: string; items: Movie[] }
+export interface Rail { title: string; subtitle?: string; items: Movie[]; active_model?: string | null }
 export interface Home { user_id: number; arc: { caption: string; items: Movie[] }; rails: Rail[] }
 export interface Profile {
   user_id: number
@@ -69,8 +69,8 @@ export const api = {
   allUsers: () => get<AllUser[]>('/api/all_users'),
   movie: (userId: number, movieId: number) => get<MovieDetail>(`/api/movie/${movieId}?user_id=${userId}`),
   person: (userId: number, name: string) => get<PersonResult>(`/api/person?name=${encodeURIComponent(name)}&user_id=${userId}`),
-  home: (userId: number, explore: number, genre: string, anchor = 0) =>
-    get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}&anchor=${anchor}`),
+  home: (userId: number, explore: number, genre: string, anchor = 0, model = '') =>
+    get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}&anchor=${anchor}&model=${encodeURIComponent(model)}`),
   chat: (userId: number, messages: ChatTurn[]) =>
     fetch(`${BASE}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

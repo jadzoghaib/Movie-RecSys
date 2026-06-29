@@ -1,3 +1,14 @@
 @import "tailwindcss";
 
 html, body { height: 100%; background: #0b0b0f; }
+
+/* gentle entrance for Tonight's Arc when it first renders */
+@keyframes arc-reveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-arc-reveal { animation: arc-reveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-arc-reveal { animation: none; }
+}

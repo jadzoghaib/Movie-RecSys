@@ -43,6 +43,20 @@ export function discoveryLabel(v: number) {
   return 'Pure discovery'
 }
 
+/** Coarse exploration level for the at-a-glance badge. */
+export function explorationLevel(v: number) {
+  if (v <= 0.33) return 'Low'
+  if (v <= 0.66) return 'Medium'
+  return 'High'
+}
+
+/** One-line description of what moving the slider actually does. */
+export function explorationHint(v: number) {
+  if (v <= 0.33) return 'Safe, familiar favourites — close to your proven taste.'
+  if (v <= 0.66) return 'A balanced mix of trusted picks and a few surprises.'
+  return 'Bold, long-tail & serendipitous picks well outside your usual lane.'
+}
+
 /* ---------- skeletons ---------- */
 export function SkeletonCard() {
   return (
@@ -128,13 +142,18 @@ function Chip({ children }: { children: ReactNode }) {
 }
 
 /* ---------- arc ---------- */
-export function ArcRail({ caption, items }: { caption: string; items: Movie[] }) {
+export function ArcRail({ caption, items, journeyFrom }: { caption: string; items: Movie[]; journeyFrom?: string | null }) {
   return (
-    <section className="mb-12 rounded-2xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-600/10 via-indigo-600/5 to-transparent p-6 shadow-lg shadow-fuchsia-900/10">
-      <div className="mb-1.5 flex items-center gap-2">
+    <section className="mb-14 animate-arc-reveal rounded-2xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-600/10 via-indigo-600/5 to-transparent p-6 shadow-lg shadow-fuchsia-900/10">
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
         <Sparkles className="h-4 w-4 text-fuchsia-300" />
         <h2 className="text-lg font-bold text-fuchsia-100">Tonight&apos;s Arc</h2>
         <span className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-fuchsia-300">a curated journey</span>
+        {journeyFrom && (
+          <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-2 py-0.5 text-[11px] font-medium text-fuchsia-200">
+            Journey from: {journeyFrom}
+          </span>
+        )}
       </div>
       <p className="mb-5 text-sm text-zinc-300">{caption}</p>
       <div className="flex items-stretch gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -157,9 +176,16 @@ export function Rail({ rail }: { rail: RailT }) {
   const ref = useRef<HTMLDivElement>(null)
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * 620, behavior: 'smooth' })
   return (
-    <section className="group/rail mb-10">
-      <h2 className="text-lg font-bold text-white">{rail.title}</h2>
-      {rail.subtitle && <p className="mb-3 text-[11px] uppercase tracking-wide text-zinc-500">{rail.subtitle}</p>}
+    <section className="group/rail mb-12">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <h2 className="text-lg font-bold text-white">{rail.title}</h2>
+        {rail.active_model && (
+          <span className="rounded-full border border-red-500/30 bg-red-600/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-300">
+            Active model: {rail.active_model}
+          </span>
+        )}
+      </div>
+      {rail.subtitle && <p className={`mb-3 mt-0.5 text-[11px] tracking-wide text-zinc-500 ${rail.active_model ? 'normal-case' : 'uppercase'}`}>{rail.subtitle}</p>}
       <div className="relative">
         <button onClick={() => scroll(-1)} aria-label="Scroll left"
           className="absolute -left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-zinc-200 opacity-0 transition group-hover/rail:flex group-hover/rail:opacity-100 hover:bg-black"><ChevronLeft className="h-5 w-5" /></button>
