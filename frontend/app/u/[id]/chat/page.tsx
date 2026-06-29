@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { Sparkles, Send } from 'lucide-react'
 import { api, type Movie } from '@/lib/api'
-import { PosterCard } from '@/app/components'
+import { PosterCard, useLikes, CardActionsProvider } from '@/app/components'
 
 type Turn = { role: 'user' | 'assistant'; text: string; movies?: Movie[] }
 
@@ -26,10 +27,10 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const sentInitial = useRef(false)
+  const { likes, toggle } = useLikes()
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [turns, loading])
 
-  // auto-send a query passed from the home "describe your mood" bar (?q=...)
   useEffect(() => {
     if (sentInitial.current) return
     const q = new URLSearchParams(window.location.search).get('q')
@@ -54,40 +55,42 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-3xl flex-col px-6 py-6">
-      <header className="mb-6 flex items-center gap-4 border-b border-white/5 pb-3">
-        <Link href={`/u/${userId}`} className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
-        <Link href={`/u/${userId}`} className="text-xs text-zinc-400 transition hover:text-white">← Home</Link>
-        <span className="text-sm text-zinc-500">✨ AI Guide · Viewer #{userId}</span>
-      </header>
+    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: (m) => send(`More movies like ${m.title}`) }}>
+      <div className="mx-auto flex min-h-full max-w-3xl flex-col px-6 py-6">
+        <header className="mb-6 flex items-center gap-4 border-b border-white/5 pb-3">
+          <Link href={`/u/${userId}`} className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
+          <Link href={`/u/${userId}`} className="text-xs text-zinc-400 transition hover:text-white">← Home</Link>
+          <span className="flex items-center gap-1.5 text-sm text-fuchsia-400"><Sparkles className="h-4 w-4" /> AI Guide · Viewer #{userId}</span>
+        </header>
 
-      <div className="flex-1 space-y-5">
-        {turns.map((t, i) => <Bubble key={i} turn={t} />)}
-        {loading && <p className="text-sm text-zinc-500">CineMatch is thinking…</p>}
-        <div ref={endRef} />
-      </div>
-
-      {turns.length <= 1 && (
-        <div className="mb-3 mt-6 flex flex-wrap gap-2">
-          {SUGGESTIONS.map((s) => (
-            <button key={s} onClick={() => send(s)}
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-red-500/50 hover:text-white">
-              {s}
-            </button>
-          ))}
+        <div className="flex-1 space-y-5">
+          {turns.map((t, i) => <Bubble key={i} turn={t} />)}
+          {loading && <p className="flex items-center gap-1.5 text-sm text-zinc-500"><Sparkles className="h-3.5 w-3.5 animate-pulse text-fuchsia-400" /> CineMatch is thinking…</p>}
+          <div ref={endRef} />
         </div>
-      )}
 
-      <form onSubmit={(e) => { e.preventDefault(); send(input) }} className="sticky bottom-4 mt-4 flex gap-2">
-        <input value={input} onChange={(e) => setInput(e.target.value)}
-          placeholder="What are you in the mood for?"
-          className="flex-1 rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm outline-none focus:border-red-500" />
-        <button type="submit" disabled={loading}
-          className="rounded-xl bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50">
-          Send
-        </button>
-      </form>
-    </div>
+        {turns.length <= 1 && (
+          <div className="mb-3 mt-6 flex flex-wrap gap-2">
+            {SUGGESTIONS.map((s) => (
+              <button key={s} onClick={() => send(s)}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-fuchsia-500/50 hover:text-white">
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={(e) => { e.preventDefault(); send(input) }} className="sticky bottom-4 mt-4 flex gap-2">
+          <input value={input} onChange={(e) => setInput(e.target.value)}
+            placeholder="What are you in the mood for?"
+            className="flex-1 rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm outline-none focus:border-fuchsia-500" />
+          <button type="submit" disabled={loading} aria-label="Send"
+            className="flex items-center gap-1.5 rounded-xl bg-fuchsia-600 px-5 text-sm font-semibold text-white transition hover:bg-fuchsia-500 disabled:opacity-50">
+            <Send className="h-4 w-4" /> Send
+          </button>
+        </form>
+      </div>
+    </CardActionsProvider>
   )
 }
 
