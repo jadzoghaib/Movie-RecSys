@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
   Users, HelpCircle, X, MousePointerClick, SlidersHorizontal, FlaskConical,
-  Sparkles, Film, Heart, Route,
+  Sparkles, Film, Wand2, Route,
 } from 'lucide-react'
 import { api, type Profile } from '@/lib/api'
 
@@ -14,7 +14,7 @@ const STEPS: { icon: React.ComponentType<{ className?: string }>; title: string;
   { icon: FlaskConical, title: 'Swap the algorithm', body: 'The Model selector (and the Evaluation board) let you drive the “Top picks” rail with any of the 10 recommenders, so you can see how each model behaves on real picks.' },
   { icon: Sparkles, title: 'Ask the AI guide', body: 'Describe a mood — “a dark sci-fi but not too slow”. The AI reads your intent (genre, tone, era), then our own recommender does the ranking.' },
   { icon: Film, title: 'Open any movie', body: 'Click a poster for the detail page: trailer, cast & director, a personalised “For you” rail and an item-similar “More like this”. Click a cast member or director for their own page.' },
-  { icon: Heart, title: 'Teach it your taste', body: '♥ Like a film or hit ✨ “More like this” on any card to re-seed the “Because you liked…” rail and Tonight’s Arc around that pick.' },
+  { icon: Wand2, title: 'Teach it your taste', body: 'Hit ✨ “More like this” on any card (or the hero) to re-seed the “Because you liked…” rail and Tonight’s Arc around that pick.' },
   { icon: Route, title: 'Follow Tonight’s Arc', body: 'A curated 4-film journey: a trusted opener that drifts, step by step, toward one serendipitous discovery.' },
 ]
 

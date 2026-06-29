@@ -7,7 +7,7 @@ import { Sparkles, FlaskConical, X, Fingerprint, Network } from 'lucide-react'
 import { api, type Home, type Movie, type ModelInfo } from '@/lib/api'
 import {
   Hero, ArcRail, Rail, SkeletonRail, discoveryLabel, explorationLevel, explorationHint,
-  useLikes, CardActionsProvider,
+  CardActionsProvider,
 } from '@/app/components'
 
 export default function HomePage() {
@@ -27,7 +27,6 @@ export default function HomePage() {
   const [home, setHome] = useState<Home | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { likes, toggle } = useLikes()
   const sliderTouched = useRef(false)
   const dnaApplied = useRef(false)
 
@@ -59,7 +58,7 @@ export default function HomePage() {
   const dna = home?.viewer
 
   return (
-    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: setAnchor, onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
+    <CardActionsProvider value={{ onMoreLikeThis: setAnchor, onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="min-h-full">
         {/* header */}
         <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">

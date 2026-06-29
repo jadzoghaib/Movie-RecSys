@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Sparkles, Film, Clapperboard } from 'lucide-react'
 import { api, type PersonResult } from '@/lib/api'
-import { Rail, useLikes, CardActionsProvider, SkeletonRail } from '@/app/components'
+import { Rail, CardActionsProvider, SkeletonRail } from '@/app/components'
 
 export default function PersonPage() {
   const params = useParams<{ id: string; name: string }>()
@@ -16,7 +16,6 @@ export default function PersonPage() {
   const [data, setData] = useState<PersonResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { likes, toggle } = useLikes()
 
   useEffect(() => {
     if (!name) return
@@ -30,7 +29,7 @@ export default function PersonPage() {
   const initials = name.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase()
 
   return (
-    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
+    <CardActionsProvider value={{ onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="min-h-full">
         <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3.5">

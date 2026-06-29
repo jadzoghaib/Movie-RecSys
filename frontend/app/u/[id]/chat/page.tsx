@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Sparkles, Send } from 'lucide-react'
 import { api, type Movie } from '@/lib/api'
-import { PosterCard, useLikes, CardActionsProvider } from '@/app/components'
+import { PosterCard, CardActionsProvider } from '@/app/components'
 
 type Turn = { role: 'user' | 'assistant'; text: string; movies?: Movie[] }
 
@@ -28,7 +28,6 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const sentInitial = useRef(false)
-  const { likes, toggle } = useLikes()
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [turns, loading])
 
@@ -56,7 +55,7 @@ export default function ChatPage() {
   }
 
   return (
-    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: (m) => send(`More movies like ${m.title}`), onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
+    <CardActionsProvider value={{ onMoreLikeThis: (m) => send(`More movies like ${m.title}`), onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="mx-auto flex min-h-full max-w-3xl flex-col px-6 py-6">
         <header className="mb-6 flex items-center gap-4 border-b border-white/5 pb-3">
           <Link href={`/u/${userId}`} className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>

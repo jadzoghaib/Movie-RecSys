@@ -3,34 +3,15 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Play, Sparkles, Lightbulb, ArrowRight, ChevronLeft, ChevronRight, Heart, ExternalLink,
+  Play, Sparkles, Lightbulb, ArrowRight, ChevronLeft, ChevronRight, ExternalLink,
 } from 'lucide-react'
 import type { Movie, Rail as RailT } from '@/lib/api'
 
-/* ---------- likes (localStorage feedback loop) ---------- */
-const LIKES_KEY = 'cinematch_likes'
-
-export function useLikes() {
-  const [likes, setLikes] = useState<number[]>([])
-  useEffect(() => {
-    try { setLikes(JSON.parse(localStorage.getItem(LIKES_KEY) || '[]')) } catch {}
-  }, [])
-  const toggle = (id: number) =>
-    setLikes((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-      try { localStorage.setItem(LIKES_KEY, JSON.stringify(next)) } catch {}
-      return next
-    })
-  return { likes, toggle }
-}
-
 type CardActions = {
-  isLiked: (id: number) => boolean
-  toggleLike: (id: number) => void
   onMoreLikeThis?: (m: Movie) => void
   onOpen?: (m: Movie) => void
 }
-const CardActionsContext = createContext<CardActions>({ isLiked: () => false, toggleLike: () => {} })
+const CardActionsContext = createContext<CardActions>({})
 export function CardActionsProvider({ value, children }: { value: CardActions; children: ReactNode }) {
   return <CardActionsContext.Provider value={value}>{children}</CardActionsContext.Provider>
 }
@@ -79,8 +60,7 @@ export function SkeletonRail() {
 
 /* ---------- hero ---------- */
 export function Hero({ movie, loading }: { movie: Movie; loading?: boolean }) {
-  const { isLiked, toggleLike, onMoreLikeThis } = useContext(CardActionsContext)
-  const liked = isLiked(movie.movie_id)
+  const { onMoreLikeThis } = useContext(CardActionsContext)
   return (
     <section className="relative overflow-hidden border-b border-white/5">
       {movie.poster_url && (
@@ -113,10 +93,6 @@ export function Hero({ movie, loading }: { movie: Movie; loading?: boolean }) {
           )}
           {movie.overview && <p className="mb-6 line-clamp-2 text-sm leading-relaxed text-zinc-400 sm:line-clamp-3">{movie.overview}</p>}
           <div className="flex flex-wrap gap-3">
-            <button onClick={() => toggleLike(movie.movie_id)} aria-pressed={liked}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold ring-1 transition ${liked ? 'bg-red-600 text-white ring-red-500' : 'bg-zinc-800 text-white ring-white/10 hover:bg-zinc-700'}`}>
-              <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} /> {liked ? 'Liked' : 'Like'}
-            </button>
             {onMoreLikeThis && (
               <button onClick={() => onMoreLikeThis(movie)}
                 className="flex items-center gap-2 rounded-lg bg-fuchsia-600/15 px-4 py-2.5 text-sm font-semibold text-fuchsia-300 ring-1 ring-fuchsia-500/30 transition hover:bg-fuchsia-600/25">
@@ -231,8 +207,7 @@ function WhyPreview({ movie, anchor }: { movie: Movie; anchor: { left: number; t
 
 /* ---------- poster card (hover -> floating "why" card, feedback loop, keyboard-accessible) ---------- */
 export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
-  const { isLiked, toggleLike, onMoreLikeThis, onOpen } = useContext(CardActionsContext)
-  const liked = isLiked(movie.movie_id)
+  const { onMoreLikeThis, onOpen } = useContext(CardActionsContext)
   const cardRef = useRef<HTMLDivElement>(null)
   const timer = useRef<number | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -286,10 +261,6 @@ export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
         {/* hover / keyboard-focus: action buttons + genres (the full "why" lives in the floating card) */}
         <div className="absolute inset-0 flex flex-col justify-between bg-black/60 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
           <div className="flex justify-end gap-1.5">
-            <button onClick={(e) => { e.stopPropagation(); toggleLike(movie.movie_id) }} aria-pressed={liked} aria-label={liked ? 'Unlike' : 'Like'}
-              className={`flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-white/20 backdrop-blur-md transition focus:outline-none focus:ring-2 focus:ring-red-500 ${liked ? 'bg-red-600 text-white' : 'bg-black/50 text-white hover:bg-white hover:text-black'}`}>
-              <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-current' : ''}`} />
-            </button>
             {onMoreLikeThis && (
               <button onClick={(e) => { e.stopPropagation(); onMoreLikeThis(movie) }} aria-label="More like this"
                 className="flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-fuchsia-300 ring-1 ring-white/20 backdrop-blur-md transition hover:bg-fuchsia-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-fuchsia-500">

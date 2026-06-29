@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Play, Heart, Star, Clock, Calendar, ExternalLink, X, Clapperboard } from 'lucide-react'
+import { Play, Star, Clock, Calendar, ExternalLink, X, Clapperboard } from 'lucide-react'
 import { api, type MovieDetail } from '@/lib/api'
-import { Rail, useLikes, CardActionsProvider, SkeletonRail } from '@/app/components'
+import { Rail, CardActionsProvider, SkeletonRail } from '@/app/components'
 
 export default function MovieDetailPage() {
   const params = useParams<{ id: string; movieId: string }>()
@@ -17,8 +17,6 @@ export default function MovieDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showTrailer, setShowTrailer] = useState(false)
-  const { likes, toggle } = useLikes()
-  const liked = data ? likes.includes(data.movie_id) : false
 
   useEffect(() => {
     if (!movieId) return
@@ -32,7 +30,7 @@ export default function MovieDetailPage() {
   const personHref = (name: string) => `/u/${userId}/person/${encodeURIComponent(name)}`
 
   return (
-    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
+    <CardActionsProvider value={{ onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="min-h-full">
         {/* header */}
         <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
@@ -107,10 +105,6 @@ export default function MovieDetailPage() {
                         <Play className="h-4 w-4 fill-current" /> Play trailer
                       </button>
                     )}
-                    <button onClick={() => toggle(data.movie_id)} aria-pressed={liked}
-                      className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold ring-1 transition ${liked ? 'bg-red-600 text-white ring-red-500' : 'bg-zinc-800 text-white ring-white/10 hover:bg-zinc-700'}`}>
-                      <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} /> {liked ? 'Liked' : 'Like'}
-                    </button>
                     <a href={data.tmdb_url ?? '#'} target="_blank" rel="noreferrer"
                        className="flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white">
                       <ExternalLink className="h-4 w-4" /> View on TMDB
