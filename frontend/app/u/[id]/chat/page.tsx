@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Sparkles, Send } from 'lucide-react'
 import { api, type Movie } from '@/lib/api'
@@ -18,6 +18,7 @@ const SUGGESTIONS = [
 
 export default function ChatPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const userId = Number(params.id)
 
   const [turns, setTurns] = useState<Turn[]>([
@@ -55,7 +56,7 @@ export default function ChatPage() {
   }
 
   return (
-    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: (m) => send(`More movies like ${m.title}`) }}>
+    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: (m) => send(`More movies like ${m.title}`), onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="mx-auto flex min-h-full max-w-3xl flex-col px-6 py-6">
         <header className="mb-6 flex items-center gap-4 border-b border-white/5 pb-3">
           <Link href={`/u/${userId}`} className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>

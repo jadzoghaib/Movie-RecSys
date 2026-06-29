@@ -41,6 +41,18 @@ export interface Profile {
   fav_title: string | null
   fav_poster: string | null
 }
+export interface AllUser { user_id: number; n_ratings: number; top_genres: string[]; fav_poster: string | null }
+export interface MovieDetail extends Movie {
+  year?: number | null
+  runtime?: number | null
+  vote_average?: number | null
+  cast?: string[]
+  director?: string | null
+  trailer_key?: string | null
+  backdrop_url?: string | null
+  similar?: Movie[]
+}
+export interface PersonResult { name: string; n_movies: number; keywords: string[]; movies: Movie[] }
 
 export interface ChatTurn { role: 'user' | 'assistant'; text: string }
 export interface ChatResponse { action: string; reply: string; movies: Movie[]; filters?: Record<string, unknown> }
@@ -53,6 +65,9 @@ export const api = {
   metrics: () => get<Metric[]>('/api/metrics'),
   genres: () => get<string[]>('/api/genres'),
   profiles: () => get<Profile[]>('/api/profiles'),
+  allUsers: () => get<AllUser[]>('/api/all_users'),
+  movie: (userId: number, movieId: number) => get<MovieDetail>(`/api/movie/${movieId}?user_id=${userId}`),
+  person: (userId: number, name: string) => get<PersonResult>(`/api/person?name=${encodeURIComponent(name)}&user_id=${userId}`),
   home: (userId: number, explore: number, genre: string, anchor = 0) =>
     get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}&anchor=${anchor}`),
   chat: (userId: number, messages: ChatTurn[]) =>

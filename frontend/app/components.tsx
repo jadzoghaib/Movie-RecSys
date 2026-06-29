@@ -27,6 +27,7 @@ type CardActions = {
   isLiked: (id: number) => boolean
   toggleLike: (id: number) => void
   onMoreLikeThis?: (m: Movie) => void
+  onOpen?: (m: Movie) => void
 }
 const CardActionsContext = createContext<CardActions>({ isLiked: () => false, toggleLike: () => {} })
 export function CardActionsProvider({ value, children }: { value: CardActions; children: ReactNode }) {
@@ -174,11 +175,14 @@ export function Rail({ rail }: { rail: RailT }) {
 
 /* ---------- poster card (visible why + feedback loop, keyboard-accessible) ---------- */
 export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
-  const { isLiked, toggleLike, onMoreLikeThis } = useContext(CardActionsContext)
+  const { isLiked, toggleLike, onMoreLikeThis, onOpen } = useContext(CardActionsContext)
   const liked = isLiked(movie.movie_id)
   return (
-    <div className="group relative w-full">
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10 transition-all duration-300 focus-within:ring-2 focus-within:ring-red-500 group-hover:-translate-y-1 group-hover:shadow-xl group-hover:ring-white/30">
+    <div className="group relative w-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0f]"
+      role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined}
+      onClick={() => onOpen?.(movie)}
+      onKeyDown={(e) => { if (onOpen && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(movie) } }}>
+      <div className={`relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl group-hover:ring-white/30 ${onOpen ? 'cursor-pointer' : ''}`}>
         {movie.poster_url ? (
           <img src={movie.poster_url} alt={movie.title} loading="lazy"
                className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-40" />
@@ -200,12 +204,12 @@ export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
         {/* hover / keyboard-focus: actions + full why + genres */}
         <div className="absolute inset-0 flex flex-col justify-between bg-black/60 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
           <div className="flex justify-end gap-1.5">
-            <button onClick={() => toggleLike(movie.movie_id)} aria-pressed={liked} aria-label={liked ? 'Unlike' : 'Like'}
+            <button onClick={(e) => { e.stopPropagation(); toggleLike(movie.movie_id) }} aria-pressed={liked} aria-label={liked ? 'Unlike' : 'Like'}
               className={`flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-white/20 backdrop-blur-md transition focus:outline-none focus:ring-2 focus:ring-red-500 ${liked ? 'bg-red-600 text-white' : 'bg-black/50 text-white hover:bg-white hover:text-black'}`}>
               <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-current' : ''}`} />
             </button>
             {onMoreLikeThis && (
-              <button onClick={() => onMoreLikeThis(movie)} aria-label="More like this"
+              <button onClick={(e) => { e.stopPropagation(); onMoreLikeThis(movie) }} aria-label="More like this"
                 className="flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-fuchsia-300 ring-1 ring-white/20 backdrop-blur-md transition hover:bg-fuchsia-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-fuchsia-500">
                 <Sparkles className="h-3.5 w-3.5" />
               </button>
@@ -221,7 +225,7 @@ export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
               {movie.genres.slice(0, 3).map((g) => (
                 <span key={g} className="rounded bg-white/20 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">{g}</span>
               ))}
-              <a href={movie.tmdb_url ?? '#'} target="_blank" rel="noreferrer" aria-label="View on TMDB"
+              <a href={movie.tmdb_url ?? '#'} target="_blank" rel="noreferrer" aria-label="View on TMDB" onClick={(e) => e.stopPropagation()}
                  className="ml-auto rounded p-1 text-white/80 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500"><ExternalLink className="h-3.5 w-3.5" /></a>
             </div>
           </div>

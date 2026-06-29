@@ -49,7 +49,7 @@ def _save_cache(cache):
 
 def fetch_one(tmdb_id, key, retries=2):
     url = (f"https://api.themoviedb.org/3/movie/{int(tmdb_id)}"
-           f"?api_key={key}&append_to_response=keywords,credits")
+           f"?api_key={key}&append_to_response=keywords,credits,videos")
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(url, timeout=15) as r:
@@ -70,6 +70,15 @@ def fetch_one(tmdb_id, key, retries=2):
                 "release_year": int(d["release_date"][:4]) if d.get("release_date") else None,
                 "collection": bool(d.get("belongs_to_collection")),
                 "n_companies": len(d.get("production_companies", [])),
+                # for movie-detail + person pages
+                "director": next((c["name"] for c in d.get("credits", {}).get("crew", [])
+                                  if c.get("job") == "Director"), None),
+                "backdrop_url": (f"https://image.tmdb.org/t/p/w1280{d['backdrop_path']}"
+                                 if d.get("backdrop_path") else None),
+                "trailer_key": next((v["key"] for v in d.get("videos", {}).get("results", [])
+                                     if v.get("site") == "YouTube" and v.get("type") == "Trailer"),
+                                    next((v["key"] for v in d.get("videos", {}).get("results", [])
+                                          if v.get("site") == "YouTube"), None)),
             }
         except Exception:
             if attempt == retries:
@@ -121,7 +130,7 @@ def build_cache_concurrent(links_df, item_col=config.ITEM_COL, workers=10):
     rows = links_df.dropna(subset=["tmdbId"])
     todo = [(str(int(m)), int(t)) for m, t in zip(rows[item_col], rows["tmdbId"])
             if str(int(m)) not in cache or "error" in cache.get(str(int(m)), {})
-            or "runtime" not in cache.get(str(int(m)), {})]   # re-fetch to add new fields
+            or "director" not in cache.get(str(int(m)), {})]   # re-fetch to add new fields
     print(f"{len(todo)} movies to fetch with {workers} workers", flush=True)
     done = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:

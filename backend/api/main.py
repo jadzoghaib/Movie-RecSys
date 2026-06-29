@@ -3,6 +3,7 @@
 Run from backend/:  py -m uvicorn api.main:app --reload --port 8000
 """
 
+from collections import Counter
 from contextlib import asynccontextmanager
 
 import pandas as pd
@@ -68,12 +69,26 @@ def build_state():
     for mid, ch in chip_map.items():
         item_meta[mid]["chips"] = ch
 
+    prof = _compute_profiles(train, item_meta)
+
+    # person -> movies index (top cast + director) for the person pages
+    person_movies: dict[str, list[int]] = {}
+    for mid_str, c in tmdb_cache.items():
+        if not isinstance(c, dict) or "error" in c:
+            continue
+        mid = int(mid_str)
+        names = list(c.get("cast", [])[:6])
+        if c.get("director"):
+            names.append(c["director"])
+        for nm in names:
+            person_movies.setdefault(nm, []).append(mid)
+
     STATE.update(
         ratings=ratings, train=train, test=test, models=models,
         item_meta=item_meta, tmdb_cache=tmdb_cache,
         user_counts=ratings[config.USER_COL].value_counts(),
         item_pop=train[config.ITEM_COL].value_counts().to_dict(),
-        profiles=_compute_profiles(train, item_meta),
+        profiles=prof["curated"], all_users=prof["all"], person_movies=person_movies,
     )
 
 
@@ -115,9 +130,7 @@ def _enrich_list(recs, genre=None):
 
 
 def _compute_profiles(train, item_meta, n=8):
-    """A diverse, curated set of sample viewers for the 'Who's watching?' landing —
-    the most active user per dominant genre, with their favourite film + top genres."""
-    from collections import Counter
+    """Curated viewers for the landing + the full sorted list for the 'All viewers' page."""
     counts = train[config.USER_COL].value_counts()
     liked = train[train[config.RATING_COL] >= 4]
     top_genre, genres_by_user = {}, {}
@@ -130,21 +143,26 @@ def _compute_profiles(train, item_meta, n=8):
         genres_by_user[u] = [g for g, _ in gc.most_common(3)]
         if gc:
             top_genre[u] = gc.most_common(1)[0][0]
+    fav_by_user = (train.sort_values(config.RATING_COL, ascending=False)
+                        .groupby(config.USER_COL)[config.ITEM_COL].first().to_dict())
+
+    def profile(u):
+        fav = item_meta.get(int(fav_by_user.get(u, -1)), {})
+        return {
+            "user_id": int(u), "n_ratings": int(counts[u]),
+            "top_genres": genres_by_user.get(u, []),
+            "fav_title": fav.get("title"), "fav_poster": fav.get("poster_url"),
+        }
+
     by_genre = {}
     for u, g in top_genre.items():
         if g not in by_genre or counts[u] > counts[by_genre[g]]:
             by_genre[g] = u
     chosen = sorted(by_genre.values(), key=lambda u: -counts[u])[:n]
-    out = []
-    for u in chosen:
-        urows = train[train[config.USER_COL] == u].sort_values(config.RATING_COL, ascending=False)
-        fav = item_meta.get(int(urows.iloc[0][config.ITEM_COL]), {})
-        out.append({
-            "user_id": int(u), "n_ratings": int(counts[u]),
-            "top_genres": genres_by_user.get(u, []),
-            "fav_title": fav.get("title"), "fav_poster": fav.get("poster_url"),
-        })
-    return out
+    return {
+        "curated": [profile(u) for u in chosen],
+        "all": [profile(u) for u in sorted(counts.index)],   # sorted by viewer id
+    }
 
 
 def _user_seed(user_id):
@@ -244,6 +262,53 @@ def similar(movie_id: int, n: int = 10):
 @app.get("/api/profiles")
 def profiles():
     return STATE.get("profiles", [])
+
+
+@app.get("/api/all_users")
+def all_users():
+    return STATE.get("all_users", [])
+
+
+@app.get("/api/movie/{movie_id}")
+def movie_detail(movie_id: int, user_id: int = 0):
+    meta = STATE["item_meta"].get(movie_id)
+    if not meta:
+        return {"error": "not found"}
+    c = STATE["tmdb_cache"].get(str(movie_id)) or {}
+    cb = STATE["models"].get("content_based")
+    similar = _enrich_list(cb.similar_items(movie_id, n=14)) if cb else []
+    if user_id:
+        taste = user_taste(user_id, STATE["train"], STATE["item_meta"], STATE["tmdb_cache"])
+        for it in similar:
+            it["why"] = why_recommended(it, STATE["tmdb_cache"].get(str(it["movie_id"])), taste)
+    return {
+        **meta,
+        "year": c.get("release_year"), "runtime": c.get("runtime"),
+        "vote_average": c.get("vote_average"),
+        "cast": c.get("cast", []), "director": c.get("director"),
+        "trailer_key": c.get("trailer_key"), "backdrop_url": c.get("backdrop_url"),
+        "similar": similar,
+    }
+
+
+@app.get("/api/person")
+def person(name: str, user_id: int = 0):
+    mids = STATE.get("person_movies", {}).get(name, [])
+    rr = STATE["models"].get("ltr_reranked")
+    pool = dict(rr.base.recommend(user_id, n=300)) if (user_id and rr) else {}
+    kw, scored = Counter(), []
+    for mid in mids:
+        c = STATE["tmdb_cache"].get(str(mid)) or {}
+        kw.update(c.get("keywords", []))
+        scored.append((mid, pool.get(mid, 0.0) + (c.get("vote_average", 0) or 0) * 0.05))
+    scored.sort(key=lambda x: -x[1])
+    movies = [_enrich(mid) for mid, _ in scored]
+    if user_id and movies:
+        taste = user_taste(user_id, STATE["train"], STATE["item_meta"], STATE["tmdb_cache"])
+        for it in movies:
+            it["why"] = why_recommended(it, STATE["tmdb_cache"].get(str(it["movie_id"])), taste)
+    return {"name": name, "n_movies": len(mids),
+            "keywords": [k for k, _ in kw.most_common(10)], "movies": movies}
 
 
 @app.get("/api/genres")

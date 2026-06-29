@@ -41,7 +41,7 @@ export default function HomePage() {
   const hero = home?.rails?.[0]?.items?.[0]
 
   return (
-    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: setAnchor }}>
+    <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: setAnchor, onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="min-h-full">
         {/* header */}
         <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
