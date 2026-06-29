@@ -33,7 +33,10 @@ export interface Metric {
 }
 
 export interface Rail { title: string; subtitle?: string; items: Movie[]; active_model?: string | null }
-export interface Home { user_id: number; arc: { caption: string; items: Movie[] }; rails: Rail[] }
+export interface ViewerDNA { segment: string; explore_suggestion: number; novelty_appetite: number; recent_genres: string[] }
+export interface Home { user_id: number; viewer?: ViewerDNA | null; arc: { caption: string; items: Movie[] }; rails: Rail[] }
+export interface TasteNode { id: number; title: string; x: number; y: number; genre: string; role: 'seen' | 'rec'; poster_url?: string | null }
+export interface TasteMapData { nodes: TasteNode[]; edges: [number, number][]; arc: number[] }
 export interface Profile {
   user_id: number
   n_ratings: number
@@ -69,6 +72,7 @@ export const api = {
   allUsers: () => get<AllUser[]>('/api/all_users'),
   movie: (userId: number, movieId: number) => get<MovieDetail>(`/api/movie/${movieId}?user_id=${userId}`),
   person: (userId: number, name: string) => get<PersonResult>(`/api/person?name=${encodeURIComponent(name)}&user_id=${userId}`),
+  tasteMap: (userId: number) => get<TasteMapData>(`/api/taste_map?user_id=${userId}`),
   home: (userId: number, explore: number, genre: string, anchor = 0, model = '') =>
     get<Home>(`/api/home?user_id=${userId}&explore=${explore}&genre=${encodeURIComponent(genre)}&anchor=${anchor}&model=${encodeURIComponent(model)}`),
   chat: (userId: number, messages: ChatTurn[]) =>

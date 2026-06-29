@@ -3,9 +3,11 @@
 Run from backend/:  py -m uvicorn api.main:app --reload --port 8000
 """
 
+import math
 from collections import Counter
 from contextlib import asynccontextmanager
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -71,6 +73,16 @@ def build_state():
 
     prof = _compute_profiles(train, item_meta)
 
+    # per-user novelty appetite -> Explorer/Comfort segmentation (honest bandit-style
+    # stand-in: no click logs in MovieLens, so we read appetite from rating behaviour).
+    n_users = int(ratings[config.USER_COL].nunique())
+    pop = train[config.ITEM_COL].value_counts().to_dict()
+    nov_of = {m: -math.log2((c + 1) / (n_users + 1)) for m, c in pop.items()}
+    liked = train[train[config.RATING_COL] >= 4.0]
+    base = liked if not liked.empty else train
+    appetite = (base.assign(_nov=base[config.ITEM_COL].map(nov_of).fillna(0.0))
+                    .groupby(config.USER_COL)["_nov"].mean().to_dict())
+
     # person -> movies index (top cast + director) for the person pages
     person_movies: dict[str, list[int]] = {}
     for mid_str, c in tmdb_cache.items():
@@ -89,6 +101,7 @@ def build_state():
         user_counts=ratings[config.USER_COL].value_counts(),
         item_pop=train[config.ITEM_COL].value_counts().to_dict(),
         profiles=prof["curated"], all_users=prof["all"], person_movies=person_movies,
+        appetite=appetite, appetite_sorted=np.sort(np.array(list(appetite.values()))),
     )
 
 
@@ -182,6 +195,108 @@ def _arc_caption(items):
     gl = items[-1]["genres"][0] if items[-1]["genres"] else "discovery"
     return (f"Start with a {g0} pick you'll trust, then drift toward a "
             f"lesser-known {gl} discovery.")
+
+
+def _viewer_dna(user_id):
+    """Explorer / Comfort segmentation + recent taste, derived from the viewer's
+    own ratings. The appetite percentile sets a suggested default for the
+    discovery slider (a bandit-style policy at our scale)."""
+    app = STATE.get("appetite", {})
+    a = app.get(int(user_id))
+    if a is None:
+        return None
+    arr = STATE["appetite_sorted"]
+    pct = float(np.searchsorted(arr, a) / max(len(arr), 1)) if len(arr) else 0.5
+    explore = round(0.2 + 0.65 * pct, 2)
+    segment = "Explorer" if pct >= 0.66 else ("Comfort watcher" if pct <= 0.33 else "Balanced")
+    tr = STATE["train"]
+    rows = tr[tr[config.USER_COL] == int(user_id)]
+    recent = rows.sort_values(config.TIMESTAMP_COL, ascending=False).head(20)
+    gc = Counter()
+    for m in recent[config.ITEM_COL]:
+        meta = STATE["item_meta"].get(int(m))
+        if meta:
+            gc.update(meta["genres"])
+    return {"segment": segment, "explore_suggestion": explore,
+            "novelty_appetite": round(float(a), 2),
+            "recent_genres": [g for g, _ in gc.most_common(3)]}
+
+
+def _cluster_layout(genres, seed=0):
+    """Genre-cluster radial layout: each lead-genre gets its own neighbourhood
+    around a ring, films spread on a small disk within it. Deterministic and
+    always readable — and it makes the genre clusters (and the arc hopping
+    between them) visually explicit, which is the whole point of the map."""
+    rng = np.random.default_rng(seed)
+    n = len(genres)
+    if n == 0:
+        return np.zeros((0, 2))
+    uniq = sorted(set(genres))
+    base = rng.uniform(0, 2 * math.pi)
+    ang = {g: base + 2 * math.pi * i / len(uniq) for i, g in enumerate(uniq)}
+    per, seen = Counter(genres), Counter()
+    R = 0.34 if len(uniq) > 1 else 0.0
+    pos = np.zeros((n, 2))
+    for idx, g in enumerate(genres):
+        gx, gy = 0.5 + R * math.cos(ang[g]), 0.5 + R * math.sin(ang[g])
+        m, j = per[g], seen[g]
+        seen[g] += 1
+        if m == 1:
+            ox = oy = 0.0
+        else:
+            t = 2 * math.pi * j / m + 0.4 * (j % 2)
+            rr = 0.05 + 0.055 * (j % 3)
+            ox, oy = rr * math.cos(t), rr * math.sin(t)
+        pos[idx] = (gx + ox, gy + oy)
+    return np.clip(pos, 0.04, 0.96)
+
+
+@app.get("/api/taste_map")
+def taste_map(user_id: int):
+    """A graph of the viewer's taste: nodes = their top-rated films + top
+    recommendations, edges = content similarity, plus Tonight's Arc as a path."""
+    cb = STATE["models"].get("content_based")
+    rr = STATE["models"].get("ltr_reranked")
+    if cb is None:
+        return {"nodes": [], "edges": [], "arc": []}
+    tr, meta = STATE["train"], STATE["item_meta"]
+    rows = tr[tr[config.USER_COL] == int(user_id)]
+    seen_ids = [int(m) for m in rows.sort_values(config.RATING_COL, ascending=False)[config.ITEM_COL].head(12)]
+    rec_pairs = rr.rerank(user_id, n=18) if rr else cb.recommend(user_id, n=18)
+    rec_ids = [int(i) for i, _ in rec_pairs]
+    arc_ids = [int(i) for i in (rr.build_arc(user_id, n=4, explore=0.6) if rr else [])]
+
+    order, role = [], {}
+    for group, tag in ((seen_ids, "seen"), (rec_ids, "rec"), (arc_ids, "rec")):
+        for i in group:
+            if i not in role and i in cb.item_id_to_index_:
+                order.append(i)
+                role[i] = tag
+    order = order[:36]
+    idxs = [cb.item_id_to_index_[i] for i in order]
+    sub = cb.item_features_[idxs]
+    sims = (sub @ sub.T).toarray()
+    np.fill_diagonal(sims, 0.0)
+
+    edges = set()
+    for a in range(len(order)):
+        for b in np.argsort(-sims[a])[:2]:
+            if sims[a][b] > 0.10:
+                edges.add((min(a, int(b)), max(a, int(b))))
+    edges = sorted(edges)
+
+    node_genres = [(meta.get(i, {}).get("genres") or ["Other"])[0] for i in order]
+    pos = _cluster_layout(node_genres, seed=int(user_id))
+
+    nodes = []
+    for k, i in enumerate(order):
+        m = meta.get(i, {})
+        nodes.append({"id": i, "title": m.get("title", str(i)),
+                      "x": round(float(pos[k][0]), 4), "y": round(float(pos[k][1]), 4),
+                      "genre": node_genres[k], "role": role.get(i, "rec"),
+                      "poster_url": m.get("poster_url")})
+    return {"nodes": nodes, "edges": [[a, b] for a, b in edges],
+            "arc": [i for i in arc_ids if i in role]}
 
 
 @app.get("/api/health")
@@ -421,6 +536,7 @@ def home(user_id: int, explore: float = 0.4, genre: str = "", anchor: int = 0, m
 
     return {
         "user_id": user_id,
+        "viewer": _viewer_dna(user_id),
         "arc": {"caption": _arc_caption(arc_items), "items": arc_items},
         "rails": [r for r in rails if r["items"]],
     }

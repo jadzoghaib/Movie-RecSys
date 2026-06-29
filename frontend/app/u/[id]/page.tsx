@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, FlaskConical, X } from 'lucide-react'
+import { Sparkles, FlaskConical, X, Fingerprint, Network } from 'lucide-react'
 import { api, type Home, type Movie, type ModelInfo } from '@/lib/api'
 import {
   Hero, ArcRail, Rail, SkeletonRail, discoveryLabel, explorationLevel, explorationHint,
@@ -28,6 +28,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { likes, toggle } = useLikes()
+  const sliderTouched = useRef(false)
+  const dnaApplied = useRef(false)
 
   useEffect(() => { api.genres().then(setGenres).catch(() => {}) }, [])
   useEffect(() => { api.models().then(setModels).catch(() => {}) }, [])
@@ -44,8 +46,17 @@ export default function HomePage() {
       .finally(() => setLoading(false))
   }, [userId, debExplore, genre, anchor, model])
 
+  // Viewer DNA sets a smart default for the discovery slider (once, unless touched)
+  useEffect(() => {
+    if (!dnaApplied.current && home?.viewer && !sliderTouched.current) {
+      dnaApplied.current = true
+      setExplore(home.viewer.explore_suggestion)
+    }
+  }, [home?.viewer])
+
   const hero = home?.rails?.[0]?.items?.[0]
   const activeModelLabel = models.find((m) => m.id === model)?.label
+  const dna = home?.viewer
 
   return (
     <CardActionsProvider value={{ isLiked: (id) => likes.includes(id), toggleLike: toggle, onMoreLikeThis: setAnchor, onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
@@ -57,8 +68,18 @@ export default function HomePage() {
               <Link href="/" className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
               <Link href="/" className="hidden text-xs text-zinc-400 transition hover:text-white sm:block">← Profiles</Link>
               <span className="hidden rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-zinc-300 sm:block">Viewer #{userId}</span>
+              {dna && (
+                <span className="hidden items-center gap-1.5 rounded-full border border-fuchsia-500/25 bg-fuchsia-600/10 px-2.5 py-1 text-xs font-medium text-fuchsia-200 md:flex"
+                  title={`Novelty appetite ${dna.novelty_appetite} · default discovery preset to ${Math.round(dna.explore_suggestion * 100)}%`}>
+                  <Fingerprint className="h-3.5 w-3.5" /> {dna.segment}
+                  {dna.recent_genres.length > 0 && <span className="text-fuchsia-300/70">· lately {dna.recent_genres.slice(0, 2).join(', ')}</span>}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-5">
+              <Link href={`/u/${userId}/map`} className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 transition hover:text-white">
+                <Network className="h-3.5 w-3.5" /> Taste Map
+              </Link>
               <Link href={`/u/${userId}/chat`} className="flex items-center gap-1.5 text-xs font-medium text-fuchsia-400 transition hover:text-fuchsia-300">
                 <Sparkles className="h-3.5 w-3.5" /> AI Guide
               </Link>
@@ -92,7 +113,7 @@ export default function HomePage() {
               <div className="flex items-center gap-4">
                 <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Safe</span>
                 <input type="range" min={0} max={1} step={0.05} value={explore}
-                  onChange={(e) => setExplore(Number(e.target.value))}
+                  onChange={(e) => { sliderTouched.current = true; setExplore(Number(e.target.value)) }}
                   aria-valuetext={discoveryLabel(explore)}
                   style={{ background: `linear-gradient(to right, #dc2626 ${explore * 100}%, #27272a ${explore * 100}%)` }}
                   className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md" />
