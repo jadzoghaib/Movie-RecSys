@@ -269,6 +269,43 @@ def all_users():
     return STATE.get("all_users", [])
 
 
+def _for_you_anchored(user_id, anchor_id, n=14, alpha=0.6):
+    """Personalised ranking *conditioned* on the movie being viewed:
+
+        final = alpha * normalised(personal LTR score) + (1-alpha) * content_sim(item, anchor)
+
+    Where 'More like this' (content_based.similar_items) is viewer-agnostic — every
+    user sees the same neighbours of the anchor — this blend reweights those neighbours
+    (and the viewer's wider personal pool) by who *this* viewer is, so two viewers
+    looking at the same movie get different lists."""
+    models = STATE["models"]
+    cb = models.get("content_based")
+    rr = models.get("ltr_reranked")
+    if cb is None or not user_id:
+        return []
+    sims = dict(cb.similar_items(anchor_id, n=400))                         # {mid: cosine}  who the *movie* is
+    pool = dict(rr.base.recommend(user_id, n=400)) if rr else {}            # {mid: score}   who the *viewer* is
+    seen = models["most_popular"]._seen.get(user_id, set()) if "most_popular" in models else set()
+    item_pop = STATE["item_pop"]
+    mn = min(pool.values()) if pool else 0.0
+    rng = (max(pool.values()) - mn) if pool else 1.0
+    rng = rng or 1.0
+
+    scored = []
+    for mid in (set(sims) | set(pool)) - {int(anchor_id)}:
+        if mid in seen:
+            continue
+        pers = (pool[mid] - mn) / rng if mid in pool else 0.0
+        sim = sims.get(mid, 0.0)
+        if pool:
+            score = alpha * pers + (1 - alpha) * sim
+        else:                                   # cold viewer: no personal signal -> sim + mild popularity
+            score = sim + 0.001 * (item_pop.get(mid, 0) ** 0.5)
+        scored.append((mid, score))
+    scored.sort(key=lambda x: -x[1])
+    return _enrich_list([(mid, sc) for mid, sc in scored[:n]])
+
+
 @app.get("/api/movie/{movie_id}")
 def movie_detail(movie_id: int, user_id: int = 0):
     meta = STATE["item_meta"].get(movie_id)
@@ -277,9 +314,10 @@ def movie_detail(movie_id: int, user_id: int = 0):
     c = STATE["tmdb_cache"].get(str(movie_id)) or {}
     cb = STATE["models"].get("content_based")
     similar = _enrich_list(cb.similar_items(movie_id, n=14)) if cb else []
+    for_you = _for_you_anchored(user_id, movie_id, n=14) if user_id else []
     if user_id:
         taste = user_taste(user_id, STATE["train"], STATE["item_meta"], STATE["tmdb_cache"])
-        for it in similar:
+        for it in (*similar, *for_you):
             it["why"] = why_recommended(it, STATE["tmdb_cache"].get(str(it["movie_id"])), taste)
     return {
         **meta,
@@ -288,6 +326,7 @@ def movie_detail(movie_id: int, user_id: int = 0):
         "cast": c.get("cast", []), "director": c.get("director"),
         "trailer_key": c.get("trailer_key"), "backdrop_url": c.get("backdrop_url"),
         "similar": similar,
+        "for_you": for_you,
     }
 
 

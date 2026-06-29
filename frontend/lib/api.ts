@@ -51,6 +51,7 @@ export interface MovieDetail extends Movie {
   trailer_key?: string | null
   backdrop_url?: string | null
   similar?: Movie[]
+  for_you?: Movie[]
 }
 export interface PersonResult { name: string; n_movies: number; keywords: string[]; movies: Movie[] }
 

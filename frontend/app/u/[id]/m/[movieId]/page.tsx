@@ -121,10 +121,17 @@ export default function MovieDetailPage() {
             </section>
 
             <main className="mx-auto max-w-[1400px] px-6 pb-16 pt-10">
+              {data.for_you && data.for_you.length > 0 && (
+                <Rail rail={{
+                  title: 'For you — because you’re watching this',
+                  subtitle: 'Personalised: your taste reweighted toward this movie',
+                  items: data.for_you,
+                }} />
+              )}
               {data.similar && data.similar.length > 0 && (
                 <Rail rail={{
                   title: 'More like this',
-                  subtitle: `Recommended because you’re looking at ${data.title}`,
+                  subtitle: `Movies most similar to ${data.title} — same for every viewer`,
                   items: data.similar,
                 }} />
               )}
