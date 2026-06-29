@@ -9,6 +9,13 @@ html, body { height: 100%; background: #0b0b0f; }
 }
 .animate-arc-reveal { animation: arc-reveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* floating "why this" hover card */
+@keyframes tip-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-tip { animation: tip-in 0.13s ease-out; }
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-arc-reveal { animation: none; }
+  .animate-arc-reveal, .animate-tip { animation: none; }
 }

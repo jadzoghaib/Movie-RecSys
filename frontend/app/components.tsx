@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Play, Sparkles, Lightbulb, ArrowRight, ChevronLeft, ChevronRight, Heart, ExternalLink,
 } from 'lucide-react'
@@ -199,14 +200,69 @@ export function Rail({ rail }: { rail: RailT }) {
   )
 }
 
-/* ---------- poster card (visible why + feedback loop, keyboard-accessible) ---------- */
+/* ---------- floating "why this" preview (portal — escapes rail overflow clipping) ---------- */
+function WhyPreview({ movie, anchor }: { movie: Movie; anchor: { left: number; top: number; below: boolean } }) {
+  return createPortal(
+    <div className="pointer-events-none fixed z-[60] w-72"
+      style={{ left: anchor.left, top: anchor.top, transform: anchor.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)' }}>
+      <div className="animate-tip rounded-xl border border-white/10 bg-[#15151c]/95 p-3.5 shadow-2xl shadow-black/60 backdrop-blur-md">
+        <p className="text-sm font-bold leading-snug text-white">{movie.title}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {movie.chips?.map((c) => (
+            <span key={c} className="rounded-full border border-red-500/25 bg-red-600/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-300">{c}</span>
+          ))}
+          {movie.genres.slice(0, 3).map((g) => (
+            <span key={g} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-300">{g}</span>
+          ))}
+        </div>
+        {movie.why ? (
+          <div className="mt-2.5 flex items-start gap-2 rounded-lg bg-white/5 p-2.5">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+            <p className="text-xs font-medium leading-relaxed text-zinc-100">{movie.why}</p>
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-zinc-400">Recommended for you.</p>
+        )}
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+/* ---------- poster card (hover -> floating "why" card, feedback loop, keyboard-accessible) ---------- */
 export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
   const { isLiked, toggleLike, onMoreLikeThis, onOpen } = useContext(CardActionsContext)
   const liked = isLiked(movie.movie_id)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const timer = useRef<number | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [anchor, setAnchor] = useState<{ left: number; top: number; below: boolean } | null>(null)
+  useEffect(() => setMounted(true), [])
+
+  const place = () => {
+    const r = cardRef.current?.getBoundingClientRect()
+    if (!r) return
+    const below = r.top < 230                                   // near the top edge -> flip under the card
+    const left = Math.min(Math.max(r.left + r.width / 2, 150), window.innerWidth - 150)
+    setAnchor({ left, top: below ? r.bottom + 10 : r.top - 10, below })
+  }
+  const show = () => { if (timer.current) window.clearTimeout(timer.current); timer.current = window.setTimeout(place, 110) }
+  const hide = () => { if (timer.current) window.clearTimeout(timer.current); setAnchor(null) }
+
+  useEffect(() => {
+    if (!anchor) return
+    const reanchor = () => place()
+    window.addEventListener('scroll', reanchor, true)
+    window.addEventListener('resize', reanchor)
+    return () => { window.removeEventListener('scroll', reanchor, true); window.removeEventListener('resize', reanchor) }
+  }, [anchor])
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
+
   return (
-    <div className="group relative w-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0f]"
+    <div ref={cardRef} className="group relative w-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0f]"
       role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined}
       onClick={() => onOpen?.(movie)}
+      onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
       onKeyDown={(e) => { if (onOpen && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(movie) } }}>
       <div className={`relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl group-hover:ring-white/30 ${onOpen ? 'cursor-pointer' : ''}`}>
         {movie.poster_url ? (
@@ -227,7 +283,7 @@ export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
           )}
         </div>
 
-        {/* hover / keyboard-focus: actions + full why + genres */}
+        {/* hover / keyboard-focus: action buttons + genres (the full "why" lives in the floating card) */}
         <div className="absolute inset-0 flex flex-col justify-between bg-black/60 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
           <div className="flex justify-end gap-1.5">
             <button onClick={(e) => { e.stopPropagation(); toggleLike(movie.movie_id) }} aria-pressed={liked} aria-label={liked ? 'Unlike' : 'Like'}
@@ -241,22 +297,16 @@ export function PosterCard({ movie, badge }: { movie: Movie; badge?: string }) {
               </button>
             )}
           </div>
-          <div className="mt-auto">
-            {movie.why && (
-              <p className="mb-2 flex items-start gap-1.5 text-xs font-medium leading-relaxed text-white">
-                <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400" /><span className="line-clamp-4">{movie.why}</span>
-              </p>
-            )}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {movie.genres.slice(0, 3).map((g) => (
-                <span key={g} className="rounded bg-white/20 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">{g}</span>
-              ))}
-              <a href={movie.tmdb_url ?? '#'} target="_blank" rel="noreferrer" aria-label="View on TMDB" onClick={(e) => e.stopPropagation()}
-                 className="ml-auto rounded p-1 text-white/80 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500"><ExternalLink className="h-3.5 w-3.5" /></a>
-            </div>
+          <div className="mt-auto flex flex-wrap items-center gap-1.5">
+            {movie.genres.slice(0, 3).map((g) => (
+              <span key={g} className="rounded bg-white/20 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-md">{g}</span>
+            ))}
+            <a href={movie.tmdb_url ?? '#'} target="_blank" rel="noreferrer" aria-label="View on TMDB" onClick={(e) => e.stopPropagation()}
+               className="ml-auto rounded p-1 text-white/80 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500"><ExternalLink className="h-3.5 w-3.5" /></a>
           </div>
         </div>
       </div>
+      {mounted && anchor && <WhyPreview movie={movie} anchor={anchor} />}
     </div>
   )
 }
