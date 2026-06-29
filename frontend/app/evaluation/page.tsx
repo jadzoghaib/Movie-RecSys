@@ -3,8 +3,11 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Play } from 'lucide-react'
+import { ArrowLeft, Play, Star } from 'lucide-react'
 import { api, type Metric, type ModelInfo, type Profile } from '@/lib/api'
+
+// The recommender that actually powers the app's "Top picks" by default.
+const DEFAULT_MODEL = 'ltr_reranked'
 
 const COLS: [string, keyof Metric, string][] = [
   ['P@10', 'precision@k', 'Precision@10 — fraction of the top-10 recommendations that are relevant (rated ≥ 3.5 in the held-out test set).'],
@@ -51,9 +54,14 @@ export default function EvaluationPage() {
         The point isn&apos;t one winner — it&apos;s the <span className="text-zinc-200">accuracy vs. beyond-accuracy trade-off</span>.
         Best value per column is highlighted; hover a heading for its definition.
       </p>
-      <p className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-600/10 px-3 py-1.5 text-xs text-red-300">
-        <Play className="h-3.5 w-3.5 fill-current" /> Click any model row to drive a live “Top picks” rail with it{demoUser ? ` for Viewer #${demoUser}` : ''} — watch the metrics become real recommendations.
-      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-600/15 px-3 py-1.5 text-xs font-medium text-red-200">
+          <Star className="h-3.5 w-3.5 fill-current" /> Highlighted row = the model powering the app (LTR hybrid + re-ranker)
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">
+          <Play className="h-3.5 w-3.5 fill-current" /> Click any row to drive a live “Top picks” rail{demoUser ? ` for Viewer #${demoUser}` : ''}
+        </span>
+      </div>
 
       <div className="mt-5 overflow-x-auto rounded-xl border border-white/10">
         <table className="w-full text-sm">
@@ -67,12 +75,21 @@ export default function EvaluationPage() {
             </tr>
           </thead>
           <tbody>
-            {metrics.map((m) => (
+            {metrics.map((m) => {
+              const isDefault = m.model === DEFAULT_MODEL
+              return (
               <tr key={m.model} onClick={() => seeLive(m.model)}
                 title={desc[m.model] ? `${desc[m.model]} — click to see it live` : 'Click to see it live'}
-                className="group cursor-pointer border-t border-white/5 transition hover:bg-red-600/[0.07]">
+                className={`group cursor-pointer border-t border-white/5 transition ${isDefault ? 'bg-red-600/10 ring-1 ring-inset ring-red-500/40 hover:bg-red-600/[0.18]' : 'hover:bg-red-600/[0.07]'}`}>
                 <td className="px-4 py-2.5">
-                  <div className="font-medium text-zinc-200 group-hover:text-white">{m.model}</div>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-medium ${isDefault ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`}>{m.model}</span>
+                    {isDefault && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        <Star className="h-2.5 w-2.5 fill-current" /> Default · in production
+                      </span>
+                    )}
+                  </div>
                   {desc[m.model] && <div className="mt-0.5 max-w-xs text-[11px] leading-snug text-zinc-500">{desc[m.model]}</div>}
                 </td>
                 {all.map(([, k]) => {
@@ -91,7 +108,7 @@ export default function EvaluationPage() {
                   </span>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
