@@ -6,7 +6,6 @@ plus a beyond-accuracy metric (catalog coverage).
 """
 
 import numpy as np
-import pandas as pd
 
 from .config import USER_COL, ITEM_COL, RATING_COL, RELEVANCE_THRESHOLD
 

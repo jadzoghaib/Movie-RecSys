@@ -12,7 +12,11 @@ Next.js (React + TS + Tailwind)  →  FastAPI REST  →  Python recommender core
 
 - **`backend/src/`** — the engine; every algorithm implements one `Recommender` interface (`fit` / `recommend`).
 - **`backend/api/`** — FastAPI exposing every model over REST (`/api/home`, `/api/recommend`, `/api/similar`, `/api/metrics`, …).
-- **`frontend/`** — Next.js UI ("CineMatch"): `/` "Who's watching?" landing → `/u/[id]` Netflix-style home (hero, **Tonight's Arc**, rails, "why this" explanations, discovery slider) → `/evaluation` the metrics lab → `/u/[id]/chat` the **conversational AI guide**.
+- **`frontend/`** — Next.js UI ("CineMatch", Netflix-style redesign with a cinematic launch intro, Anton/Archivo/Hanken type and true Netflix red):
+  - `/` "Who's watching?" landing with **generated line-art viewer avatars**;
+  - `/u/[id]` home — hero, **Tonight's Arc**, rails, grounded **"why this"** hover cards, the **Safe↔Bold discovery slider**, a **Viewer-DNA** auto-profile (Explorer/Comfort, derived from the viewer's own ratings), and a **model selector** that pins any algorithm to the Top-picks rail;
+  - `/u/[id]/m/[movieId]` movie detail (trailer, clickable cast/director, "For you" + "More like this" rails);
+  - `/u/[id]/person/[name]` person spotlight · `/u/[id]/map` the **Taste Map** constellation · `/u/[id]/chat` the **conversational AI guide** · `/users` all viewers · `/evaluation` the metrics lab (click a model row to drive it live).
 
 The design is *registry-driven*: add a model in `src/`, register it in `api/registry.py`, and it
 appears automatically in the API, the evaluation harness, and the UI — no other changes needed.
@@ -104,6 +108,24 @@ Open **http://localhost:3000** → "Who's watching?" → pick a viewer.
 
 **Optional — external enrichment** (the app runs without these and falls back gracefully):
 create `backend/.env` with `TMDB_API_KEY=…` (posters + metadata) and `GEMINI_API_KEY=…` (the AI guide).
+
+## Deploy
+
+The frontend (Next.js) deploys cleanly to **Vercel**. The backend (FastAPI) loads every
+model into memory at startup (~1–2 min), so host it on an **always-on** Python service
+(Render / Railway / Fly.io) rather than serverless functions.
+
+**Frontend → Vercel**
+1. vercel.com → *New Project* → import `jadzoghaib/Movie-RecSys`.
+2. Set **Root Directory** = `frontend` (Next.js preset is auto-detected).
+3. Add env var **`NEXT_PUBLIC_API_BASE`** = your deployed backend URL (e.g. `https://cinematch-api.onrender.com`). Without it the client falls back to `http://127.0.0.1:8000`.
+4. Deploy.
+
+**Backend → Render (example)**
+- New *Web Service* from the repo, **Root Directory** = `backend`.
+- Build: `pip install -r requirements.txt` · Start: `uvicorn api.main:app --host 0.0.0.0 --port $PORT`.
+- Env vars: `TMDB_API_KEY`, `GEMINI_API_KEY` (optional), and **`FRONTEND_ORIGIN`** = your Vercel URL (added to CORS; comma-separate multiple).
+- Needs enough RAM to hold the fitted models; the bundled `tmdb_cache.json` keeps it offline-capable for posters.
 
 ## Dataset
 

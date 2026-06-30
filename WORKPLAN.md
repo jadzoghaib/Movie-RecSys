@@ -23,10 +23,11 @@
 | 5 · Matrix factorization | truncated-SVD latent factors (k=50) |
 | 6 · Hybrid + evaluation | **LTR hybrid** (LightGBM LambdaRank, leakage-safe) · **MMR re-ranker** · beyond-accuracy metrics (diversity/novelty/serendipity) · **insider** studio-strategy + journey features |
 | 7 · Wow / UX | "Who's watching?" landing · multi-rail home · **Tonight's Arc** · discovery slider · grounded **chips + "why this"** explanations · **Gemini conversational guide** |
+| 8 · Polish & redesign | Netflix-style re-skin (cinematic launch intro · Anton/Archivo/Hanken type · true Netflix red) · generated **line-art viewer avatars** · **Taste Map** constellation · **Viewer-DNA** auto-profile · movie-detail + person pages · **model-driven evaluation** (click a model → live Top-picks rail) · floating "why this" hover cards · end-to-end audit (clean strict-TS + no dead code/endpoints) · Vercel deploy notes |
 
-**12 recommenders.** Best model: **`ltr_hybrid` — P@10 0.172, NDCG 0.219** (beats user-user CF 0.168). The re-ranker leads diversity (0.84) + serendipity (0.060) — the accuracy↔beyond-accuracy trade-off, demonstrated.
+**10 models** (+ the Gemini conversational guide). Best model: **`ltr_hybrid` — P@10 0.172, NDCG 0.219** (beats user-user CF 0.168). The re-ranker leads diversity (0.84) + serendipity (0.060) — the accuracy↔beyond-accuracy trade-off, demonstrated.
 
-**Routes:** `/` landing · `/u/[id]` home · `/u/[id]/chat` AI guide · `/evaluation` lab.
+**Routes:** `/` landing · `/u/[id]` home · `/u/[id]/m/[movieId]` movie detail · `/u/[id]/person/[name]` person · `/u/[id]/map` Taste Map · `/u/[id]/chat` AI guide · `/users` all viewers · `/evaluation` lab.
 **External:** TMDB (metadata/posters) · Gemini (NL intent parsing) — keys in gitignored `backend/.env`.
 
 **Deferred (optional):** the **slide deck** (the one remaining *required* deliverable) · TF-IDF-vs-raw comparison (E4-3) · MF tuning (E5-2) · explicit router (E6-5 — the LTR ranker already segments by user behaviour implicitly).
@@ -77,15 +78,17 @@ Every model (popular, CF, content, MF) subclasses this. The evaluator, the API, 
 | Endpoint | Returns |
 |----------|---------|
 | `GET /api/models` | list of available recommenders (id, label, description) |
-| `GET /api/users?limit=` | sample of valid user IDs (for the demo selector) |
-| `GET /api/movies?search=` | movie search (id, title, genres, poster) for "rate these" |
-| `GET /api/recommend?user_id=&model=&n=` | top-N recs: `[{movie_id, title, genres, score, poster_url}]` |
+| `GET /api/recommend?user_id=&model=&n=` | generic top-N for any registered model |
 | `GET /api/similar?movie_id=&n=` | content-based "more like this" |
 | `GET /api/metrics` | the evaluation comparison table |
-| `GET /api/home?user_id=&explore=&genre=` | _(as built)_ the whole homepage: arc + rails, each item with chips + "why" |
-| `GET /api/profiles` | _(as built)_ curated viewers for the "Who's watching?" landing |
-| `GET /api/genres` | _(as built)_ genre list for the filter |
+| `GET /api/home?user_id=&explore=&genre=&anchor=&model=` | _(as built)_ the whole homepage: Viewer-DNA + arc + rails, each item with chips + "why"; `model=` pins the Top-picks rail |
+| `GET /api/profiles` · `GET /api/all_users` | _(as built)_ curated landing viewers · every viewer for `/users` |
+| `GET /api/movie/{id}?user_id=` · `GET /api/person?name=&user_id=` | _(as built)_ movie detail (similar + "for you") · person spotlight |
+| `GET /api/taste_map?user_id=` | _(as built)_ taste-graph nodes/edges + arc path |
+| `GET /api/genres` · `GET /api/models` · `GET /api/health` | _(as built)_ filter list · model registry · health check |
 | `POST /api/chat` | _(as built)_ conversational guide: `{user_id, messages}` → Gemini intent → recommendations |
+
+*(The Sprint-0 scaffolding endpoints `/api/users` and `/api/movies` were superseded by `/api/profiles` + `/api/all_users` and the movie-detail flow, and removed.)*
 
 ### Nice-UI enhancement: TMDB metadata enrichment (SCHEDULED → Sprint 4)
 MovieLens ships `links.csv` mapping each `movieId → tmdbId/imdbId`. In Sprint 4 the backend joins **TMDB metadata** onto our movies (poster art, overview, cast, keywords) on the stable `tmdbId` key. This serves two goals at once:

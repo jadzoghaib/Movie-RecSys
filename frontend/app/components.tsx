@@ -133,6 +133,8 @@ export function SkeletonRail() {
 /* ---------- hero ---------- */
 export function Hero({ movie, loading }: { movie: Movie; loading?: boolean }) {
   const { onMoreLikeThis, onOpen } = useContext(CardActionsContext)
+  const [showFull, setShowFull] = useState(false)
+  useEffect(() => { setShowFull(false) }, [movie.movie_id])
   return (
     <section className="relative overflow-hidden border-b border-white/5">
       {movie.poster_url && (
@@ -164,7 +166,17 @@ export function Hero({ movie, loading }: { movie: Movie; loading?: boolean }) {
               <p className="text-sm font-medium leading-relaxed text-zinc-200">{movie.why}</p>
             </div>
           )}
-          {movie.overview && <p className="mb-6 line-clamp-2 text-sm leading-relaxed text-zinc-400 sm:line-clamp-3">{movie.overview}</p>}
+          {movie.overview && (
+            <div className="mb-6 max-w-xl">
+              <p className={`text-sm leading-relaxed text-zinc-400 ${showFull ? '' : 'line-clamp-3'}`}>{movie.overview}</p>
+              {movie.overview.length > 150 && (
+                <button onClick={() => setShowFull((v) => !v)}
+                  className="mt-1 text-xs font-semibold text-zinc-300 underline-offset-2 transition hover:text-white hover:underline">
+                  {showFull ? 'Show less' : 'Read more'}
+                </button>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap gap-3">
             {onOpen && (
               <button onClick={() => onOpen(movie)}

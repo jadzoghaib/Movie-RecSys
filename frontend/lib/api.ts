@@ -1,5 +1,6 @@
 // Thin typed client for the FastAPI backend.
-const BASE = 'http://127.0.0.1:8000'
+// Override for deployment (e.g. on Vercel) via NEXT_PUBLIC_API_BASE.
+const BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://127.0.0.1:8000'
 
 export interface Movie {
   movie_id: number

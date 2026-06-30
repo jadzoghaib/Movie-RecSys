@@ -4,6 +4,7 @@ Run from backend/:  py -m uvicorn api.main:app --reload --port 8000
 """
 
 import math
+import os
 from collections import Counter
 from contextlib import asynccontextmanager
 
@@ -32,7 +33,7 @@ def build_state():
     items = load_items()
     links = load_links()
 
-    train, test = train_test_split_ratings(ratings, test_size=0.2)
+    train, _ = train_test_split_ratings(ratings, test_size=0.2)
 
     models = {}
     for model in build_models():
@@ -96,9 +97,8 @@ def build_state():
             person_movies.setdefault(nm, []).append(mid)
 
     STATE.update(
-        ratings=ratings, train=train, test=test, models=models,
+        ratings=ratings, train=train, models=models,
         item_meta=item_meta, tmdb_cache=tmdb_cache,
-        user_counts=ratings[config.USER_COL].value_counts(),
         item_pop=train[config.ITEM_COL].value_counts().to_dict(),
         profiles=prof["curated"], all_users=prof["all"], person_movies=person_movies,
         appetite=appetite, appetite_sorted=np.sort(np.array(list(appetite.values()))),
@@ -112,10 +112,15 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Movie Recommender API", version="0.1.0", lifespan=lifespan)
+# Local dev origins + an optional deployed frontend (e.g. the Vercel domain) via env.
+_origins = ["http://localhost:3000", "http://127.0.0.1:3000",
+            "http://localhost:5173", "http://127.0.0.1:5173"]
+_extra = os.environ.get("FRONTEND_ORIGIN", "").strip()
+if _extra:
+    _origins += [o.strip() for o in _extra.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000",
-                   "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -314,25 +319,6 @@ def health():
 def models():
     return [{"id": m.name, "label": m.label, "description": m.description}
             for m in STATE["models"].values()]
-
-
-@app.get("/api/users")
-def users(limit: int = 30):
-    """Most active users first — handy defaults for the demo selector."""
-    uc = STATE["user_counts"].head(limit)
-    return [{"user_id": int(u), "n_ratings": int(c)} for u, c in uc.items()]
-
-
-@app.get("/api/movies")
-def movies(search: str = "", limit: int = 20):
-    s = search.lower().strip()
-    out = []
-    for meta in STATE["item_meta"].values():
-        if not s or s in meta["title"].lower():
-            out.append(meta)
-            if len(out) >= limit:
-                break
-    return out
 
 
 @app.get("/api/recommend")
