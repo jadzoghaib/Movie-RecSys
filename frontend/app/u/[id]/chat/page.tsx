@@ -58,7 +58,7 @@ export default function ChatPage() {
     <CardActionsProvider value={{ onMoreLikeThis: (m) => send(`More movies like ${m.title}`), onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="mx-auto flex min-h-full max-w-3xl flex-col px-6 py-6">
         <header className="mb-6 flex items-center gap-4 border-b border-white/5 pb-3">
-          <Link href={`/u/${userId}`} className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
+          <Link href={`/u/${userId}`} className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
           <Link href={`/u/${userId}`} className="text-xs text-zinc-400 transition hover:text-white">← Home</Link>
           <span className="flex items-center gap-1.5 text-sm text-fuchsia-400"><Sparkles className="h-4 w-4" /> AI Guide · Viewer #{userId}</span>
         </header>

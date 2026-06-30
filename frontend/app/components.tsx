@@ -39,6 +39,78 @@ export function explorationHint(v: number) {
   return 'Bold, long-tail & serendipitous picks well outside your usual lane.'
 }
 
+/* ---------- generated viewer avatars (deterministic line-art faces) ---------- */
+const AV_PALETTE = ['#E50914', '#1FA8A0', '#F5A623', '#7B61FF', '#2D7FF9', '#E84A8A', '#34B27B', '#FF6A3D', '#C44CD9', '#0EA5A0']
+function shade(hex: string, p: number) {
+  const n = parseInt(hex.slice(1), 16)
+  const cl = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
+  const r = cl(((n >> 16) & 255) * (1 + p)), g = cl(((n >> 8) & 255) * (1 + p)), b = cl((n & 255) * (1 + p))
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+function drawAvatar(cv: HTMLCanvasElement, id: number) {
+  const w = 240, h = 240, x = cv.getContext('2d')
+  if (!x) return
+  const bg = AV_PALETTE[id % AV_PALETTE.length]
+  const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, bg); g.addColorStop(1, shade(bg, -0.3))
+  x.fillStyle = g; x.fillRect(0, 0, w, h)
+  x.strokeStyle = 'rgba(255,255,255,.96)'; x.fillStyle = 'rgba(255,255,255,.96)'; x.lineWidth = 9; x.lineCap = 'round'; x.lineJoin = 'round'
+  const cx = 120, cy = 116, shape = id % 3, expr = Math.floor(id / 3) % 3, acc = Math.floor(id / 2) % 3
+  x.beginPath()
+  if (shape === 0) x.arc(cx, cy, 62, 0, Math.PI * 2)
+  else if (shape === 1) {
+    const r = 30, xx = cx - 58, yy = cy - 60, ww = 116, hh = 120
+    x.moveTo(xx + r, yy); x.arcTo(xx + ww, yy, xx + ww, yy + hh, r); x.arcTo(xx + ww, yy + hh, xx, yy + hh, r)
+    x.arcTo(xx, yy + hh, xx, yy, r); x.arcTo(xx, yy, xx + ww, yy, r)
+  } else x.ellipse(cx, cy, 56, 64, 0, 0, Math.PI * 2)
+  x.stroke()
+  if (acc === 1) { x.beginPath(); x.arc(cx - 24, cy - 6, 15, 0, Math.PI * 2); x.moveTo(cx + 39, cy - 6); x.arc(cx + 24, cy - 6, 15, 0, Math.PI * 2); x.moveTo(cx - 9, cy - 6); x.lineTo(cx + 9, cy - 6); x.stroke() }
+  else {
+    x.beginPath(); x.arc(cx - 22, cy - 8, 6, 0, Math.PI * 2); x.fill(); x.beginPath(); x.arc(cx + 22, cy - 8, 6, 0, Math.PI * 2); x.fill()
+    if (acc === 2) { x.beginPath(); x.moveTo(cx - 33, cy - 26); x.lineTo(cx - 12, cy - 21); x.moveTo(cx + 12, cy - 21); x.lineTo(cx + 33, cy - 26); x.stroke() }
+  }
+  x.beginPath()
+  if (expr === 0) x.arc(cx, cy + 16, 23, 0.13 * Math.PI, 0.87 * Math.PI)
+  else if (expr === 1) { x.moveTo(cx - 18, cy + 32); x.lineTo(cx + 18, cy + 32) }
+  else x.arc(cx, cy + 26, 13, 0, Math.PI * 2)
+  x.stroke()
+}
+export function Avatar({ id, className }: { id: number; className?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useEffect(() => { if (ref.current) drawAvatar(ref.current, id) }, [id])
+  return <canvas ref={ref} width={240} height={240} className={className} aria-hidden />
+}
+
+/* ---------- launch intro (cinematic wordmark reveal) ---------- */
+export function LaunchIntro() {
+  const [exit, setExit] = useState(false)
+  const [gone, setGone] = useState(false)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setGone(true); return }
+    const t1 = window.setTimeout(() => setExit(true), 2700)
+    const t2 = window.setTimeout(() => setGone(true), 3650)
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2) }
+  }, [])
+  if (gone) return null
+  const wf: React.CSSProperties = { fontSize: 'clamp(48px,13.5vw,190px)', lineHeight: 0.9 }
+  return (
+    <div className="font-wordmark fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black"
+      style={{ transition: 'opacity .95s cubic-bezier(.4,0,.2,1), transform .95s cubic-bezier(.4,0,.2,1)', opacity: exit ? 0 : 1, transform: exit ? 'scale(1.22)' : 'scale(1)', pointerEvents: exit ? 'none' : 'auto' }}>
+      <div className="cw-introglow absolute rounded-full"
+        style={{ width: '72vw', height: '72vw', maxWidth: 1020, maxHeight: 1020, background: 'radial-gradient(circle, rgba(229,9,20,.28), transparent 60%)', filter: 'blur(34px)', opacity: exit ? 0 : 1, transition: 'opacity .95s' }} />
+      <div className="cw-introzoom relative flex items-center justify-center">
+        <div className="absolute left-1/2 top-1/2 z-[1] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center" style={{ gap: '1.5vw' }}>
+          {Array.from({ length: 18 }).map((_, i) => (
+            <div key={i} style={{ width: '0.55vw', maxWidth: 10, height: '48vh', maxHeight: 540, borderRadius: 99, background: 'linear-gradient(180deg, transparent, #e50914 20%, #ff6068 50%, #e50914 80%, transparent)', boxShadow: '0 0 22px rgba(229,9,20,.55)', transformOrigin: 'center', transform: 'scaleY(0)', opacity: 0, animation: `cw-strand 2.6s cubic-bezier(.5,0,.2,1) ${(i * 0.045).toFixed(3)}s forwards` }} />
+          ))}
+        </div>
+        <div className="relative z-[2]" style={{ ...wf, color: '#e50914', textShadow: '0 0 56px rgba(229,9,20,.65)' }}>CINEMATCH</div>
+        <div className="cw-beam absolute inset-0 z-[3] flex items-center justify-center"
+          style={{ ...wf, color: 'transparent', background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,.28) 46%, #ffffff 50%, rgba(255,255,255,.28) 54%, transparent 60%)', backgroundSize: '280% 100%', backgroundPosition: '175% 0', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>CINEMATCH</div>
+      </div>
+    </div>
+  )
+}
+
 /* ---------- skeletons ---------- */
 export function SkeletonCard() {
   return (

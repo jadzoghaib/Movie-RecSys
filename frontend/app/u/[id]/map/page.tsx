@@ -61,7 +61,7 @@ export default function TasteMapPage() {
       <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-5">
-            <Link href={`/u/${userId}`} className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
+            <Link href={`/u/${userId}`} className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
             <Link href={`/u/${userId}`} className="text-xs text-zinc-400 transition hover:text-white">← Home</Link>
             <span className="flex items-center gap-1.5 text-sm text-fuchsia-300"><Network className="h-4 w-4" /> Taste Map · Viewer #{userId}</span>
           </div>

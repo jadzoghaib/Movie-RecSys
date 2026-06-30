@@ -7,6 +7,7 @@ import {
   Sparkles, Film, Wand2, Route,
 } from 'lucide-react'
 import { api, type Profile } from '@/lib/api'
+import { Avatar, LaunchIntro } from '@/app/components'
 
 const STEPS: { icon: React.ComponentType<{ className?: string }>; title: string; body: string }[] = [
   { icon: MousePointerClick, title: 'Pick a viewer', body: 'Each tile is a real MovieLens user. Their rating history drives every recommendation you’ll see. “Other users” opens the full, searchable list of all 610.' },
@@ -29,16 +30,21 @@ export default function Landing() {
 
   return (
     <div className="relative flex min-h-full flex-col items-center px-6 py-14">
+      <LaunchIntro />
+      {/* radial brand glow */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[420px]"
+        style={{ background: 'radial-gradient(60% 50% at 50% 0%, rgba(229,9,20,.12), transparent)' }} />
+
       {/* help button */}
       <button onClick={() => setHelp(true)}
-        className="absolute right-6 top-6 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-fuchsia-500/50 hover:text-white">
+        className="absolute right-6 top-6 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-fuchsia-500/50 hover:text-white">
         <HelpCircle className="h-4 w-4" /> How it works
       </button>
 
-      <div className="text-3xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></div>
+      <div className="font-wordmark text-4xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></div>
       <p className="mt-2 text-sm text-zinc-500">A multi-algorithm movie recommender · MovieLens</p>
 
-      <h1 className="mt-14 text-3xl font-semibold">Who&apos;s watching?</h1>
+      <h1 className="mt-14 text-4xl font-extrabold tracking-tight">Who&apos;s watching?</h1>
       <p className="mt-2 text-sm text-zinc-400">
         Pick a viewer to explore their AI-curated cinema — or{' '}
         <button onClick={() => setHelp(true)} className="text-fuchsia-400 underline-offset-4 transition hover:text-fuchsia-300 hover:underline">see how it works</button>.
@@ -51,10 +57,8 @@ export default function Landing() {
       <div className="mt-10 grid w-full max-w-5xl grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
         {profiles.slice(0, 7).map((p) => (
           <Link key={p.user_id} href={`/u/${p.user_id}`} className="group flex flex-col items-center text-center">
-            <div className="h-28 w-28 overflow-hidden rounded-2xl bg-zinc-800 ring-1 ring-white/10 transition group-hover:scale-105 group-hover:ring-2 group-hover:ring-red-500">
-              {p.fav_poster
-                ? <img src={p.fav_poster} alt="" className="h-full w-full object-cover" />
-                : <div className="flex h-full w-full items-center justify-center text-sm text-zinc-500">#{p.user_id}</div>}
+            <div className="h-[118px] w-[118px] overflow-hidden rounded-[18px] shadow-[0_0_0_1px_rgba(255,255,255,0.07)] transition duration-300 group-hover:scale-[1.06] group-hover:shadow-[0_0_0_2px_#e50914]">
+              <Avatar id={p.user_id} className="h-full w-full object-cover" />
             </div>
             <p className="mt-3 font-semibold text-zinc-200 group-hover:text-white">Viewer #{p.user_id}</p>
             <p className="text-xs text-zinc-500">{p.n_ratings.toLocaleString()} ratings</p>
@@ -68,7 +72,7 @@ export default function Landing() {
 
         {/* Other users → full sorted list */}
         <Link href="/users" className="group flex flex-col items-center text-center">
-          <div className="flex h-28 w-28 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/5 text-zinc-400 transition group-hover:scale-105 group-hover:border-fuchsia-500 group-hover:text-fuchsia-300">
+          <div className="flex h-[118px] w-[118px] items-center justify-center rounded-[18px] border border-dashed border-white/15 bg-white/5 text-zinc-400 transition duration-300 group-hover:scale-[1.06] group-hover:border-fuchsia-500 group-hover:text-fuchsia-300">
             <Users className="h-9 w-9" />
           </div>
           <p className="mt-3 font-semibold text-zinc-200 group-hover:text-white">Other users</p>

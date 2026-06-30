@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Search, ArrowUpDown } from 'lucide-react'
 import { api, type AllUser } from '@/lib/api'
+import { Avatar } from '@/app/components'
 
 type Sort = 'id' | 'ratings'
 
@@ -28,7 +29,7 @@ export default function UsersPage() {
   return (
     <div className="mx-auto min-h-full max-w-6xl px-6 py-12">
       <div className="flex flex-col items-center text-center">
-        <Link href="/" className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
+        <Link href="/" className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
         <h1 className="mt-8 text-3xl font-semibold">All viewers</h1>
         <p className="mt-2 text-sm text-zinc-400">{users.length.toLocaleString()} MovieLens viewers — pick anyone to explore their AI-curated cinema.</p>
       </div>
@@ -58,10 +59,8 @@ export default function UsersPage() {
         {shown.map((u) => (
           <Link key={u.user_id} href={`/u/${u.user_id}`}
             className="group flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-3 transition hover:border-red-500/50 hover:bg-white/10">
-            <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-zinc-800 ring-1 ring-white/10">
-              {u.fav_poster
-                ? <img src={u.fav_poster} alt="" className="h-full w-full object-cover" />
-                : <div className="flex h-full w-full items-center justify-center text-[10px] text-zinc-500">#{u.user_id}</div>}
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
+              <Avatar id={u.user_id} className="h-full w-full object-cover" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-zinc-200 group-hover:text-white">Viewer #{u.user_id}</p>

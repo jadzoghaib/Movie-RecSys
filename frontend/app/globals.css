@@ -1,6 +1,25 @@
 @import "tailwindcss";
 
-html, body { height: 100%; background: #0b0b0f; }
+/* ---- Netflix-style brand tokens: remap Tailwind red -> true Netflix red ---- */
+@theme {
+  --color-red-700: #b20710;
+  --color-red-600: #e50914;
+  --color-red-500: #f6121d;
+}
+
+:root {
+  --bg: #0a0a0c;
+  --red: #e50914;
+  --ai: #c026d3;
+}
+
+html, body { height: 100%; background: var(--bg); }
+body { font-family: var(--font-hanken), system-ui, sans-serif; }
+
+/* Display face (Archivo) for headings; wordmark uses Anton */
+h1, h2 { font-family: var(--font-archivo), system-ui, sans-serif; letter-spacing: -0.02em; }
+.font-wordmark { font-family: var(--font-anton), system-ui, sans-serif; letter-spacing: 0.01em; }
+.font-display { font-family: var(--font-archivo), system-ui, sans-serif; }
 
 /* gentle entrance for Tonight's Arc when it first renders */
 @keyframes arc-reveal {
@@ -16,6 +35,26 @@ html, body { height: 100%; background: #0b0b0f; }
 }
 .animate-tip { animation: tip-in 0.13s ease-out; }
 
+/* ---- launch intro (landing) ---- */
+@keyframes cw-introzoom { 0% { transform: scale(.42); } 65% { transform: scale(1.05); } 100% { transform: scale(1); } }
+@keyframes cw-introglow { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes cw-strand {
+  0%   { transform: scaleY(0);    opacity: 0; }
+  22%  { transform: scaleY(1.06); opacity: .95; }
+  55%  { transform: scaleY(.9);   opacity: .8; }
+  80%  { transform: scaleY(1);    opacity: .45; }
+  100% { transform: scaleY(0);    opacity: 0; }
+}
+@keyframes cw-beam {
+  0%   { background-position: 170% 0; filter: drop-shadow(0 0 2px rgba(229,9,20,0)); }
+  55%  { filter: drop-shadow(0 0 32px rgba(229,9,20,.6)); }
+  100% { background-position: -45% 0; filter: drop-shadow(0 0 16px rgba(229,9,20,.4)); }
+}
+.cw-introzoom { animation: cw-introzoom 2.9s cubic-bezier(.38,0,.1,1) forwards; }
+.cw-introglow { animation: cw-introglow 2.9s ease-in-out forwards; }
+.cw-beam { animation: cw-beam 2.1s cubic-bezier(.6,0,.18,1) .35s forwards; }
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-arc-reveal, .animate-tip { animation: none; }
+  .animate-arc-reveal, .animate-tip,
+  .cw-introzoom, .cw-introglow, .cw-beam { animation: none; }
 }

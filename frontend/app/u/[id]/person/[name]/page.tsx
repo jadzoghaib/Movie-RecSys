@@ -34,7 +34,7 @@ export default function PersonPage() {
         <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3.5">
             <div className="flex items-center gap-5">
-              <Link href={`/u/${userId}`} className="text-2xl font-extrabold tracking-tight text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
+              <Link href={`/u/${userId}`} className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
               <button onClick={() => router.back()} className="text-xs text-zinc-400 transition hover:text-white">← Back</button>
             </div>
             <span className="hidden rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-zinc-300 sm:block">Viewer #{userId}</span>
