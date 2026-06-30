@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, FlaskConical, X, Fingerprint, Network } from 'lucide-react'
-import { api, type Home, type Movie, type ModelInfo } from '@/lib/api'
+import { Sparkles, FlaskConical, X, Fingerprint, Network, ChevronDown } from 'lucide-react'
+import { api, type Home, type Movie, type ModelInfo, type AllUser } from '@/lib/api'
 import {
   Hero, ArcRail, Rail, SkeletonRail, discoveryLabel, explorationLevel, explorationHint,
   CardActionsProvider,
@@ -17,6 +17,7 @@ export default function HomePage() {
 
   const [genres, setGenres] = useState<string[]>([])
   const [models, setModels] = useState<ModelInfo[]>([])
+  const [viewers, setViewers] = useState<AllUser[]>([])
   const [model, setModel] = useState('')          // '' = production stack (LTR hybrid + re-rank)
   const [explore, setExplore] = useState(0.4)
   const [debExplore, setDebExplore] = useState(0.4)
@@ -32,6 +33,7 @@ export default function HomePage() {
 
   useEffect(() => { api.genres().then(setGenres).catch(() => {}) }, [])
   useEffect(() => { api.models().then(setModels).catch(() => {}) }, [])
+  useEffect(() => { api.allUsers().then(setViewers).catch(() => {}) }, [])
   // deep-link from the evaluation table: /u/[id]?model=item_item_cf
   useEffect(() => { const m = new URLSearchParams(window.location.search).get('model'); if (m) setModel(m) }, [])
   useEffect(() => { const t = setTimeout(() => setDebExplore(explore), 200); return () => clearTimeout(t) }, [explore])
@@ -66,7 +68,14 @@ export default function HomePage() {
             <div className="flex items-center gap-5">
               <Link href="/" className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
               <Link href="/" className="hidden text-xs text-zinc-400 transition hover:text-white sm:block">← Profiles</Link>
-              <span className="hidden rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-zinc-300 sm:block">Viewer #{userId}</span>
+              <div className="relative hidden sm:block">
+                <select value={userId} onChange={(e) => router.push(`/u/${e.target.value}`)} aria-label="Switch viewer"
+                  className="cursor-pointer appearance-none rounded-full bg-white/5 py-1 pl-3 pr-7 text-xs font-medium text-zinc-300 outline-none transition hover:bg-white/10 focus:ring-1 focus:ring-red-500">
+                  {viewers.length === 0 && <option value={userId}>Viewer #{userId}</option>}
+                  {viewers.map((u) => <option key={u.user_id} value={u.user_id}>Viewer #{u.user_id}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-500" />
+              </div>
               {dna && (
                 <span className="hidden items-center gap-1.5 rounded-full border border-fuchsia-500/25 bg-fuchsia-600/10 px-2.5 py-1 text-xs font-medium text-fuchsia-200 md:flex"
                   title={`Novelty appetite ${dna.novelty_appetite} · default discovery preset to ${Math.round(dna.explore_suggestion * 100)}%`}>
