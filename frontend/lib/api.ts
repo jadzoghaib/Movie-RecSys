@@ -15,7 +15,6 @@ export interface Movie {
 }
 
 export interface ModelInfo { id: string; label: string; description: string }
-export interface UserInfo { user_id: number; n_ratings: number }
 
 export interface Metric {
   model: string
@@ -65,7 +64,6 @@ const get = <T,>(path: string) => fetch(`${BASE}${path}`).then((r) => r.json() a
 
 export const api = {
   models: () => get<ModelInfo[]>('/api/models'),
-  users: (limit = 30) => get<UserInfo[]>(`/api/users?limit=${limit}`),
   metrics: () => get<Metric[]>('/api/metrics'),
   genres: () => get<string[]>('/api/genres'),
   profiles: () => get<Profile[]>('/api/profiles'),

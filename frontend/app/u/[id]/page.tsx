@@ -114,7 +114,7 @@ export default function HomePage() {
                 <input type="range" min={0} max={1} step={0.05} value={explore}
                   onChange={(e) => { sliderTouched.current = true; setExplore(Number(e.target.value)) }}
                   aria-valuetext={discoveryLabel(explore)}
-                  style={{ background: `linear-gradient(to right, #dc2626 ${explore * 100}%, #27272a ${explore * 100}%)` }}
+                  style={{ background: `linear-gradient(to right, #e50914 ${explore * 100}%, #27272a ${explore * 100}%)` }}
                   className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md" />
                 <span className="text-xs font-medium uppercase tracking-wide text-fuchsia-500/70">Bold</span>
                 <span className="w-[150px] shrink-0 rounded bg-white/10 px-2 py-0.5 text-center text-[11px] text-zinc-200">

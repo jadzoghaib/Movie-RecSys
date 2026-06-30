@@ -105,10 +105,12 @@ export default function MovieDetailPage() {
                         <Play className="h-4 w-4 fill-current" /> Play trailer
                       </button>
                     )}
-                    <a href={data.tmdb_url ?? '#'} target="_blank" rel="noreferrer"
-                       className="flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white">
-                      <ExternalLink className="h-4 w-4" /> View on TMDB
-                    </a>
+                    {data.tmdb_url && (
+                      <a href={data.tmdb_url} target="_blank" rel="noreferrer"
+                         className="flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white">
+                        <ExternalLink className="h-4 w-4" /> View on TMDB
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
