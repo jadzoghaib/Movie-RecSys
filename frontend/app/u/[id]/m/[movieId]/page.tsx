@@ -33,7 +33,7 @@ export default function MovieDetailPage() {
     <CardActionsProvider value={{ onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="min-h-full">
         {/* header */}
-        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
+        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0c]/85 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3.5">
             <div className="flex items-center gap-5">
               <Link href={`/u/${userId}`} className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
@@ -57,8 +57,8 @@ export default function MovieDetailPage() {
                 <div className="absolute inset-0 scale-105 bg-cover bg-center"
                      style={{ backgroundImage: `url(${data.backdrop_url || data.poster_url})`, opacity: 0.3 }} />
               )}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0b0b0f] via-[#0b0b0f]/85 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0f] to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c] via-[#0a0a0c]/85 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] to-transparent" />
               <div className="relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 px-6 py-12 sm:flex-row sm:py-16">
                 {data.poster_url && (
                   <img src={data.poster_url} alt={data.title}

@@ -58,7 +58,7 @@ export default function TasteMapPage() {
 
   return (
     <div className="min-h-full">
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0c]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-5">
             <Link href={`/u/${userId}`} className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
@@ -95,7 +95,7 @@ export default function TasteMapPage() {
           ))}
         </div>
 
-        <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0e0e15] to-[#0b0b0f]">
+        <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0e0e15] to-[#0a0a0c]">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ aspectRatio: `${W}/${H}` }}>
             <defs>
               <marker id="arc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">

@@ -88,6 +88,11 @@ export default function Landing() {
       <Link href="/evaluation" className="mt-6 text-xs text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline">
         See how the algorithms compare →
       </Link>
+      <p className="mt-10 max-w-md text-center text-[11px] leading-relaxed text-zinc-600">
+        Ratings from the MovieLens dataset. Movie data and images provided by{' '}
+        <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer" className="underline-offset-4 hover:text-zinc-400 hover:underline">TMDB</a>
+        {' '}— this product uses the TMDB API but is not endorsed or certified by TMDB.
+      </p>
 
       {/* how-it-works modal */}
       {help && (

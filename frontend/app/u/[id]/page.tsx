@@ -61,7 +61,7 @@ export default function HomePage() {
     <CardActionsProvider value={{ onMoreLikeThis: setAnchor, onOpen: (m) => router.push(`/u/${userId}/m/${m.movie_id}`) }}>
       <div className="min-h-full">
         {/* header */}
-        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b0b0f]/85 backdrop-blur-md">
+        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0c]/85 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3.5">
             <div className="flex items-center gap-5">
               <Link href="/" className="font-wordmark text-2xl uppercase text-red-600">CINE<span className="text-zinc-100">MATCH</span></Link>
